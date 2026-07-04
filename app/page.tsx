@@ -7,8 +7,8 @@ export default function Home() {
     <main className="min-h-screen bg-zinc-950 text-white">
       <div className="max-w-4xl mx-auto p-8">
         <header className="text-center py-16">
-          <h1 className="text-7xl font-bold text-yellow-400 mb-4">namretep.com</h1>
-          <p className="text-2xl text-zinc-400">Private Casino Vibes</p>
+          <h1 className="text-8xl font-bold tracking-tighter bg-gradient-to-r from-yellow-400 via-red-500 to-purple-500 bg-clip-text text-transparent">Namretep</h1>
+          <p className="text-2xl text-zinc-400">Casino Games for now</p>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
