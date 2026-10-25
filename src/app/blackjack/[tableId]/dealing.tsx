@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useLayoutEffect, useRef, type RefObject } from "react";
+import { ChipStack, DENOMINATIONS, type ChipSize } from "@/components/chip";
 import { CARD_DIMENSIONS, CardBack, PlayingCard, type CardSize } from "@/components/playing-card";
 import type { Card } from "@/lib/games/blackjack/cards";
 import type { PublicRound } from "@/lib/games/blackjack/engine";
@@ -92,15 +93,79 @@ export function computePlan(prev: RoundLike | null, next: RoundLike | null, redu
   return { entries, durationMs: end };
 }
 
-type DealContextValue = { shoeRef: RefObject<HTMLDivElement | null>; plan: DealPlan };
-export const DealContext = createContext<DealContextValue>({ shoeRef: { current: null }, plan: EMPTY_PLAN });
+// ---------- Paying out and clearing the table ----------
+
+// After the last card lands, the dealer settles one hand at a time (from
+// the last seat back to the first, like a real table), shows the results,
+// then sweeps the cards to the discard tray before betting reopens.
+
+export const SETTLE_PAUSE_MS = 400;
+export const PAY_GAP_MS = 450;
+export const PAY_FLIGHT_MS = 500;
+export const RESULT_HOLD_MS = 2000;
+export const CLEAR_MS = 650;
+
+export type Settlement = {
+  roundId: string;
+  /** When each hand ("playerId:handIndex") is paid or collected. */
+  payAt: Map<string, number>;
+  /** When results ("You won 20!") and the new balance show. */
+  resultsAt: number;
+  /** When the cards and chips start leaving the table. */
+  clearAt: number;
+  /** When the table is empty and betting opens. */
+  clearedAt: number;
+};
+
+export const handKey = (playerId: string, hand: number) => `${playerId}:${hand}`;
+
+/** The payout timeline for a settled round whose cards finish landing at `dealEndsAt`. */
+export function computeSettlement(round: RoundLike, dealEndsAt: number, reducedMotion: boolean): Settlement {
+  const hands = round.view.seats.flatMap((seat) => seat.hands.map((_, h) => handKey(seat.playerId, h))).reverse();
+  const pause = reducedMotion ? 0 : SETTLE_PAUSE_MS;
+  const gap = reducedMotion ? 0 : PAY_GAP_MS;
+  const flight = reducedMotion ? 0 : PAY_FLIGHT_MS;
+  const start = dealEndsAt + pause;
+  const payAt = new Map(hands.map((key, i) => [key, start + i * gap] as const));
+  const resultsAt = start + Math.max(0, hands.length - 1) * gap + flight;
+  const clearAt = resultsAt + RESULT_HOLD_MS;
+  return { roundId: round.roundId, payAt, resultsAt, clearAt, clearedAt: clearAt + (reducedMotion ? 0 : CLEAR_MS) };
+}
+
+/** A round that's already finished when the page opens: show the table cleared. */
+export function alreadyCleared(roundId: string): Settlement {
+  return { roundId, payAt: new Map(), resultsAt: 0, clearAt: 0, clearedAt: 0 };
+}
+
+type Refs = {
+  shoeRef: RefObject<HTMLDivElement | null>;
+  discardRef: RefObject<HTMLDivElement | null>;
+  trayRef: RefObject<HTMLDivElement | null>;
+};
+type DealContextValue = Refs & { plan: DealPlan; settlement: Settlement | null };
+export const DealContext = createContext<DealContextValue>({
+  shoeRef: { current: null },
+  discardRef: { current: null },
+  trayRef: { current: null },
+  plan: EMPTY_PLAN,
+  settlement: null,
+});
+
+function centerOffset(from: Element, to: Element) {
+  const a = from.getBoundingClientRect();
+  const b = to.getBoundingClientRect();
+  return { dx: a.left + a.width / 2 - (b.left + b.width / 2), dy: a.top + a.height / 2 - (b.top + b.height / 2) };
+}
+
+const waitUntil = (at: number) => Math.max(0, at - Date.now());
 
 /**
  * A card at the table. `card` null means face down. New cards fly in from
  * the shoe; a face-down card that gets a value flips over.
  */
 export function DealtCard({ slot, card, size = "md" }: { slot: string; card: Card | null; size?: CardSize }) {
-  const { shoeRef, plan } = useContext(DealContext);
+  const { shoeRef, discardRef, plan, settlement } = useContext(DealContext);
+  const clearAt = settlement?.clearAt;
   const entry = plan.entries.get(slot);
   const ref = useRef<HTMLDivElement>(null);
   const flown = useRef(false);
@@ -123,6 +188,22 @@ export function DealtCard({ slot, card, size = "md" }: { slot: string; card: Car
     );
   }, [entry, shoeRef]);
 
+  // When the dealer clears the table, sweep the card into the discard tray.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const discard = discardRef.current;
+    if (!el || !discard || clearAt === undefined || clearAt <= Date.now() - CLEAR_MS) return;
+    const { dx, dy } = centerOffset(discard, el);
+    const sweep = el.animate(
+      [
+        { transform: "translate(0, 0) rotate(0) scale(1)", opacity: 1 },
+        { transform: `translate(${dx}px, ${dy}px) rotate(12deg) scale(0.5)`, opacity: 0 },
+      ],
+      { duration: CLEAR_MS, delay: waitUntil(clearAt), easing: "cubic-bezier(0.5, 0, 0.75, 0)", fill: "forwards" },
+    );
+    return () => sweep.cancel();
+  }, [clearAt, discardRef]);
+
   const flipDelay = entry?.kind === "flip" ? entry.delay : 0;
   return (
     <div ref={ref} className={`flip-card ${CARD_DIMENSIONS[size]}`}>
@@ -135,6 +216,84 @@ export function DealtCard({ slot, card, size = "md" }: { slot: string; card: Car
           <CardBack size={size} animate={false} />
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * A stack of chips that can slide in from the dealer's tray (a payout),
+ * slide out to it (a lost bet), and slide off toward the player when the
+ * table clears (collecting winnings).
+ */
+export function MovingStack({
+  amount,
+  size,
+  from,
+  to,
+  leaveAt,
+}: {
+  amount: number;
+  size: ChipSize;
+  from?: "tray";
+  to?: "tray";
+  leaveAt?: number;
+}) {
+  const { trayRef } = useContext(DealContext);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const tray = trayRef.current;
+    if (!el || !tray || (!from && !to)) return;
+    const { dx, dy } = centerOffset(tray, el);
+    const away = { transform: `translate(${dx}px, ${dy}px) scale(0.6)`, opacity: 0 };
+    const here = { transform: "translate(0, 0) scale(1)", opacity: 1 };
+    const move = el.animate(from ? [away, here] : [here, away], {
+      duration: PAY_FLIGHT_MS,
+      easing: "cubic-bezier(0.3, 0.8, 0.3, 1)",
+      fill: "forwards",
+    });
+    return () => move.cancel();
+  }, [from, to, trayRef]);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || leaveAt === undefined) return;
+    const collect = el.animate(
+      [
+        { transform: "translate(0, 0)", opacity: 1 },
+        { transform: "translate(0, 3rem)", opacity: 0 },
+      ],
+      { duration: CLEAR_MS, delay: waitUntil(leaveAt), easing: "ease-in", fill: "forwards" },
+    );
+    return () => collect.cancel();
+  }, [leaveAt]);
+
+  return (
+    <span ref={ref} className="inline-flex">
+      <ChipStack amount={amount} size={size} />
+    </span>
+  );
+}
+
+/** The dealer's chip rack, where lost bets go and payouts come from. */
+export function ChipTray() {
+  const { trayRef } = useContext(DealContext);
+  return (
+    <div ref={trayRef} className="chip-tray" aria-hidden>
+      {DENOMINATIONS.slice(0, 6).map((d) => (
+        <span key={d.value} style={{ background: d.face }} />
+      ))}
+    </div>
+  );
+}
+
+/** Where used cards go when the table is cleared (opposite the shoe). */
+export function DiscardTray() {
+  const { discardRef } = useContext(DealContext);
+  return (
+    <div className="absolute top-3 left-3 sm:top-5 sm:left-5" aria-hidden>
+      <div ref={discardRef} className="discard" />
     </div>
   );
 }

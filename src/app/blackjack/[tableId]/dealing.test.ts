@@ -65,3 +65,39 @@ describe("computePlan", () => {
     expect(computePlan(null, round, true).durationMs).toBe(0);
   });
 });
+
+describe("computeSettlement", () => {
+  // Two players; a splits so there are three hands to settle.
+  const settled = () => {
+    let round = startRound(rules, stacked(["8s", "5h", "9d", "8h", "Tc", "7c", "3d", "Ts", "Kd", "Qh"]), [
+      { playerId: "a", bet: 10 },
+      { playerId: "b", bet: 10 },
+    ]);
+    round = applyAction(rules, round, { type: "split", seat: 0 });
+    while (round.phase !== "settled") {
+      const seat = round.turn!.seat;
+      round = applyAction(rules, round, { type: "stand", seat });
+    }
+    return asView("r1", round);
+  };
+
+  it("pays from the last hand back to the first, then holds and clears", async () => {
+    const { computeSettlement, handKey, SETTLE_PAUSE_MS, PAY_GAP_MS, PAY_FLIGHT_MS, RESULT_HOLD_MS, CLEAR_MS } =
+      await import("./dealing");
+    const s = computeSettlement(settled(), 1000, false);
+    const start = 1000 + SETTLE_PAUSE_MS;
+    expect(s.payAt.get(handKey("b", 0))).toBe(start);
+    expect(s.payAt.get(handKey("a", 1))).toBe(start + PAY_GAP_MS);
+    expect(s.payAt.get(handKey("a", 0))).toBe(start + 2 * PAY_GAP_MS);
+    expect(s.resultsAt).toBe(start + 2 * PAY_GAP_MS + PAY_FLIGHT_MS);
+    expect(s.clearAt).toBe(s.resultsAt + RESULT_HOLD_MS);
+    expect(s.clearedAt).toBe(s.clearAt + CLEAR_MS);
+  });
+
+  it("keeps the pause to read results, but no movement, with reduced motion", async () => {
+    const { computeSettlement, RESULT_HOLD_MS } = await import("./dealing");
+    const s = computeSettlement(settled(), 1000, true);
+    expect([...s.payAt.values()]).toEqual([1000, 1000, 1000]);
+    expect(s.clearedAt).toBe(1000 + RESULT_HOLD_MS);
+  });
+});
