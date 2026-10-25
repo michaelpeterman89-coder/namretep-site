@@ -346,6 +346,97 @@ body {
   }
 }
 
+/* ---------- Chips (see components/chip.tsx) ---------- */
+
+.chip {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: var(--chip-size);
+  height: var(--chip-size);
+  border: 2px solid var(--color-ink);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 26%, rgb(255 255 255 / 0.5), transparent 30%),
+    repeating-conic-gradient(var(--chip-edge) 0deg 16deg, var(--chip-face) 16deg 45deg);
+  box-shadow: 1px 2px 0 var(--color-ink);
+}
+
+.chip-center {
+  position: absolute;
+  inset: 19%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px dashed var(--chip-edge);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.35), transparent 45%),
+    var(--chip-face);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--chip-face) 70%, black);
+  color: var(--chip-ink);
+  font-family: var(--font-display);
+  font-size: calc(var(--chip-size) * var(--chip-font, 0.28));
+  line-height: 1;
+}
+
+/* Chips in a stack sit slightly above the one below. */
+.chip-stack {
+  position: relative;
+  display: inline-block;
+  width: var(--chip-size);
+  height: calc(var(--chip-size) + (var(--count) - 1) * var(--chip-size) * 0.22);
+}
+
+.chip-stack-layer {
+  position: absolute;
+  left: 0;
+  bottom: calc(var(--layer) * var(--chip-size) * 0.22);
+  line-height: 0;
+}
+
+button:hover > .chip,
+button:focus-visible > .chip {
+  transform: translateY(-2px);
+}
+
+/* The dealer's chip tray and the discard tray, opposite the shoe. */
+.chip-tray {
+  display: flex;
+  gap: 2px;
+  padding: 3px 5px;
+  border: 3px solid var(--color-ink);
+  border-radius: 6px;
+  background: var(--color-space-950);
+  box-shadow: 3px 3px 0 var(--color-ink);
+}
+
+.chip-tray > span {
+  width: 0.5rem;
+  height: 1rem;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 2px;
+}
+
+.discard {
+  position: relative;
+  width: 2.75rem;
+  height: 2.25rem;
+  border: 3px solid var(--color-ink);
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(0deg, var(--color-space-700) 0 3px, var(--color-ink) 3px 4px),
+    var(--color-space-800);
+  box-shadow: 3px 3px 0 var(--color-ink);
+}
+
+@media (min-width: 640px) {
+  .discard {
+    width: 3.5rem;
+    height: 2.75rem;
+  }
+}
+
 /* A chip stack styled as a little planet. */
 .chip-token {
   display: inline-flex;
