@@ -7,7 +7,7 @@ import { requirePlayer } from "@/lib/auth";
 import { REFILL_LOW_THRESHOLD, formatChips, getRefillStatus } from "@/lib/chips";
 import { BlackjackStats } from "./blackjack-stats";
 import { PokerStats } from "./poker-stats";
-import { EditProfileForm, RefillForm } from "./profile-forms";
+import { EditProfileForm, RefillForm, ResetStatsForms } from "./profile-forms";
 
 export const metadata: Metadata = { title: "Profile · Namretep" };
 
@@ -63,6 +63,17 @@ async function ProfileContent({ searchParams }: { searchParams: PageProps<"/prof
           Edit profile
         </h2>
         <EditProfileForm username={player.username} avatar={player.avatar} />
+      </section>
+
+      <section aria-labelledby="reset-heading" className="pixel-panel flex flex-col gap-4 p-6 sm:p-8">
+        <h2 id="reset-heading" className="font-display text-sm text-neon-magenta">
+          Start fresh
+        </h2>
+        <p className="text-starlight/70">
+          Clear your stats and start counting again from zero. This can&apos;t be undone. Your chips and balance
+          aren&apos;t affected.
+        </p>
+        <ResetStatsForms />
       </section>
 
       <form action={logOut} className="flex justify-center">

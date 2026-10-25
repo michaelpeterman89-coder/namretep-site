@@ -2,9 +2,10 @@
 
 import { useActionState, type ReactNode } from "react";
 import { AVATAR_STYLES, Avatar } from "@/components/avatar";
+import { ConfirmForm } from "@/components/confirm-form";
 import { Field, FormMessage, SubmitButton } from "@/components/form";
 import { AVATARS, type AvatarId } from "@/lib/avatars";
-import { claimRefill, updateProfile, type ActionState } from "./actions";
+import { claimRefill, resetStats, updateProfile, type ActionState } from "./actions";
 
 export function RefillForm({ disabledReason }: { disabledReason: ReactNode }) {
   const [state, formAction] = useActionState(claimRefill, {} as ActionState);
@@ -56,5 +57,28 @@ export function EditProfileForm({ username, avatar }: { username: string; avatar
         <SubmitButton pendingText="Saving…">Save profile</SubmitButton>
       </div>
     </form>
+  );
+}
+
+const RESET_CHOICES = [
+  { game: "blackjack", label: "Clear blackjack stats", what: "your blackjack stats, On Book %, and missed plays" },
+  { game: "holdem", label: "Clear poker stats", what: "your Texas Hold'em stats" },
+  { game: "all", label: "Clear all stats", what: "all of your stats for every game" },
+] as const;
+
+export function ResetStatsForms() {
+  return (
+    <div className="flex flex-col gap-4">
+      {RESET_CHOICES.map(({ game, label, what }) => (
+        <ConfirmForm
+          key={game}
+          action={resetStats}
+          fields={{ game }}
+          label={label}
+          question={`This permanently erases ${what}. Your chips stay as they are. Clear them?`}
+          danger
+        />
+      ))}
+    </div>
   );
 }
