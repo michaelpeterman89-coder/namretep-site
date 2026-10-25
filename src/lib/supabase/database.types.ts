@@ -135,6 +135,7 @@ export type Database = {
       blackjack_rounds: {
         Row: {
           created_at: string
+          deadline_at: string | null
           id: string
           phase: string
           public_state: Json
@@ -145,6 +146,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deadline_at?: string | null
           id?: string
           phase: string
           public_state: Json
@@ -155,6 +157,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deadline_at?: string | null
           id?: string
           phase?: string
           public_state?: Json
@@ -230,6 +233,7 @@ export type Database = {
       }
       game_tables: {
         Row: {
+          betting_deadline_at: string | null
           closed_at: string | null
           created_at: string
           game: string
@@ -246,6 +250,7 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          betting_deadline_at?: string | null
           closed_at?: string | null
           created_at?: string
           game: string
@@ -262,6 +267,7 @@ export type Database = {
           visibility: string
         }
         Update: {
+          betting_deadline_at?: string | null
           closed_at?: string | null
           created_at?: string
           game?: string
@@ -367,6 +373,87 @@ export type Database = {
         }
         Relationships: []
       }
+      table_members: {
+        Row: {
+          joined_at: string
+          player_id: string
+          table_id: string
+        }
+        Insert: {
+          joined_at?: string
+          player_id: string
+          table_id: string
+        }
+        Update: {
+          joined_at?: string
+          player_id?: string
+          table_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "table_members_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_members_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "game_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      table_seats: {
+        Row: {
+          bet_placed_at: string | null
+          joined_at: string
+          missed_turns: number
+          pending_bet: number | null
+          player_id: string
+          seat_number: number
+          status: string
+          table_id: string
+        }
+        Insert: {
+          bet_placed_at?: string | null
+          joined_at?: string
+          missed_turns?: number
+          pending_bet?: number | null
+          player_id: string
+          seat_number: number
+          status?: string
+          table_id: string
+        }
+        Update: {
+          bet_placed_at?: string | null
+          joined_at?: string
+          missed_turns?: number
+          pending_bet?: number | null
+          player_id?: string
+          seat_number?: number
+          status?: string
+          table_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "table_seats_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_seats_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "game_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -375,6 +462,38 @@ export type Database = {
       apply_chip_changes: {
         Args: { p_changes: Json; p_round_id: string; p_table_id: string }
         Returns: undefined
+      }
+      bj_act: {
+        Args: {
+          p_actor: string
+          p_chips: Json
+          p_deadline: string
+          p_decisions: Json
+          p_phase: string
+          p_public: Json
+          p_round_id: string
+          p_secret: Json
+          p_stats: Json
+          p_timed_out: string[]
+          p_version: number
+        }
+        Returns: number
+      }
+      bj_deal: {
+        Args: {
+          p_chips: Json
+          p_deadline: string
+          p_phase: string
+          p_players: string[]
+          p_public: Json
+          p_secret: Json
+          p_stats: Json
+          p_table_id: string
+        }
+        Returns: {
+          round_id: string
+          round_number: number
+        }[]
       }
       blackjack_apply_action: {
         Args: {
@@ -403,7 +522,9 @@ export type Database = {
           round_number: number
         }[]
       }
+      can_view_table: { Args: { p_table_id: string }; Returns: boolean }
       claim_daily_refill: { Args: never; Returns: number }
+      close_idle_tables: { Args: never; Returns: number }
       jsonb_add_counters: { Args: { a: Json; b: Json }; Returns: Json }
       my_book_summary: {
         Args: { p_rules_key?: string }
