@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { requirePlayer } from "@/lib/auth";
-import { getRoundForPlayer, getTable, isId } from "@/server/blackjack";
+import { getTableView, runTimeouts } from "@/server/blackjack";
+import { canViewTable, getTable, isId } from "@/server/tables";
 import { BlackjackTable } from "./blackjack-table";
 
 export const metadata: Metadata = { title: "Blackjack · Namretep" };
@@ -23,9 +25,22 @@ async function TableContent({ params }: { params: Promise<{ tableId: string }> }
   if (!isId(tableId)) notFound();
 
   const table = await getTable(tableId);
-  // Until multiplayer, a table is only visible to its owner.
-  if (!table || table.ownerId !== player.id) notFound();
+  if (!table || !(await canViewTable(table, player.id))) notFound();
 
-  const round = await getRoundForPlayer(table, player.id);
-  return <BlackjackTable table={table} initialRound={round} initialChips={player.chips} />;
+  if (table.status === "closed") {
+    return (
+      <div className="pixel-panel mx-auto flex max-w-md flex-col items-center gap-4 p-8 text-center">
+        <h1 className="font-display text-base text-starlight">{table.name}</h1>
+        <p className="text-starlight/70">This table is closed.</p>
+        <Link href="/lobby" className="pixel-btn bg-neon-cyan text-ink">
+          Find another table
+        </Link>
+      </div>
+    );
+  }
+
+  // Catch up on anything that timed out while nobody was watching.
+  await runTimeouts(table);
+  const view = await getTableView((await getTable(tableId)) ?? table, player.id);
+  return <BlackjackTable initialView={view} />;
 }

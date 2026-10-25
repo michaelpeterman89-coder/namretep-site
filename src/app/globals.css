@@ -276,6 +276,17 @@ body {
   }
 }
 
+/* Small cards (busy tables) overlap a little less. */
+.card-fan-sm > * + * {
+  margin-left: -1.25rem;
+}
+
+@media (min-width: 640px) {
+  .card-fan-sm > * + * {
+    margin-left: -1.75rem;
+  }
+}
+
 /* A chip stack styled as a little planet. */
 .chip-token {
   display: inline-flex;

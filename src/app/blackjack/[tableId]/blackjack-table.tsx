@@ -1,15 +1,26 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { Avatar } from "@/components/avatar";
 import { CardBack, PlayingCard } from "@/components/playing-card";
 import { formatChips } from "@/lib/chips";
 import { handValue, isTwoCard21, type Card } from "@/lib/games/blackjack/cards";
 import type { ActionType, PlayerHand, Seat } from "@/lib/games/blackjack/engine";
 import { houseEdge, rulesSummary } from "@/lib/games/blackjack/rules";
 import { actionLabel } from "@/lib/games/blackjack/strategy";
+import { createClient } from "@/lib/supabase/client";
 import { useStoredToggle } from "@/lib/use-stored-toggle";
-import type { GameTable, RoundForPlayer } from "@/server/blackjack";
-import { dealAction, playAction, type PlayResult } from "../actions";
+import type { TableView } from "@/server/blackjack";
+import type { SeatInfo } from "@/server/tables";
+import {
+  betAction,
+  closeTableAction,
+  playAction,
+  sitAction,
+  standAction,
+  type TableResult,
+} from "../actions";
 
 const ACTION_LABELS: Record<ActionType, string> = {
   hit: "Hit",
@@ -51,79 +62,223 @@ function seatNet(seat: Seat): number {
   return returned - wagered;
 }
 
-export function BlackjackTable({
-  table,
-  initialRound,
-  initialChips,
-}: {
-  table: GameTable;
-  initialRound: RoundForPlayer | null;
-  initialChips: number;
-}) {
-  const [round, setRound] = useState(initialRound);
-  const [chips, setChips] = useState(initialChips);
-  const [bet, setBet] = useState(Math.min(Math.max(table.minBet, 10), table.maxBet));
+/** Seconds left on a deadline, using the server's clock. */
+function secondsLeft(deadline: string | null | undefined, serverNow: number): number | null {
+  if (!deadline) return null;
+  return Math.max(0, Math.ceil((new Date(deadline).getTime() - serverNow) / 1000));
+}
+
+type Synced = { view: TableView; offset: number };
+
+/** GET refreshes the table; POST also finishes moves whose time ran out. */
+async function loadTable(tableId: string, method: "GET" | "POST"): Promise<TableView | null> {
+  try {
+    const response = await fetch(`/api/tables/${tableId}`, { method, cache: "no-store" });
+    if (!response.ok) return null;
+    return ((await response.json()) as TableResult).view;
+  } catch {
+    return null; // offline for a moment; the next update will catch up
+  }
+}
+
+export function BlackjackTable({ initialView }: { initialView: TableView }) {
+  const router = useRouter();
+  const tableId = initialView.table.id;
+  const [{ view, offset }, setSynced] = useState<Synced>(() => ({
+    view: initialView,
+    offset: new Date(initialView.serverNow).getTime() - Date.now(),
+  }));
+  const [now, setNow] = useState(() => Date.now());
+  const [bet, setBet] = useState(() => Math.min(Math.max(initialView.table.minBet, 10), initialView.table.maxBet));
   const [error, setError] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
-  const [hints, setHints] = useStoredToggle("namretep:hints", false);
+  const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [hints, setHints] = useStoredToggle("namretep:hints", false);
 
-  const { rules } = table;
-  const view = round?.view;
-  const seat = view && round.seat >= 0 ? view.seats[round.seat] : null;
-  const inProgress = view && view.phase !== "settled";
+  const latestAt = useRef(initialView.serverNow);
+  const chips = useRef(initialView.me.chips);
 
-  function apply(promise: Promise<PlayResult>) {
+  /** Takes a fresh view from the server, ignoring any that arrive out of order. */
+  const accept = useCallback(
+    (next: TableView | null) => {
+      if (!next || next.serverNow < latestAt.current) return;
+      latestAt.current = next.serverNow;
+      setSynced({ view: next, offset: new Date(next.serverNow).getTime() - Date.now() });
+      if (next.me.chips !== chips.current) {
+        chips.current = next.me.chips;
+        router.refresh(); // update the chip count in the header
+      }
+    },
+    [router],
+  );
+
+  // ---------- Live updates ----------
+
+  const fetching = useRef(false);
+  const fetchAgain = useRef(false);
+  const refetch = useCallback(async () => {
+    if (fetching.current) {
+      fetchAgain.current = true;
+      return;
+    }
+    fetching.current = true;
+    try {
+      do {
+        fetchAgain.current = false;
+        accept(await loadTable(tableId, "GET"));
+      } while (fetchAgain.current);
+    } finally {
+      fetching.current = false;
+    }
+  }, [tableId, accept]);
+
+  useEffect(() => {
+    // Every change at the table touches its game_tables row; refetch on each.
+    const supabase = createClient();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+
+    (async () => {
+      // Realtime only sends rows this player may see, so it must know who
+      // they are before subscribing; otherwise it connects as logged out.
+      const { data } = await supabase.auth.getSession();
+      if (data.session) await supabase.realtime.setAuth(data.session.access_token);
+      if (cancelled) return;
+      channel = supabase
+        .channel(`table-${tableId}`)
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "game_tables", filter: `id=eq.${tableId}` },
+          () => void refetch(),
+        )
+        .subscribe();
+    })();
+
+    // A slow backup in case the live connection drops.
+    const backup = setInterval(() => {
+      if (document.visibilityState === "visible") void refetch();
+    }, 10_000);
+    return () => {
+      cancelled = true;
+      clearInterval(backup);
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }, [tableId, refetch]);
+
+  // ---------- Clocks and timeouts ----------
+
+  const round = view.round;
+  const roundActive = Boolean(round && round.view.phase !== "settled");
+  const deadline = roundActive ? round?.deadline : view.table.bettingDeadline;
+  const left = secondsLeft(deadline, now + offset);
+
+  useEffect(() => {
+    if (!deadline) return;
+    const timer = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(timer);
+  }, [deadline]);
+
+  // When a countdown hits zero, ask the server to move things along. It
+  // checks the deadline itself, so it's fine if several viewers ask at once.
+  const lastTick = useRef<{ deadline: string; at: number } | null>(null);
+  useEffect(() => {
+    if (!deadline || left === null || left > 0) return;
+    const last = lastTick.current;
+    if (last && last.deadline === deadline && Date.now() - last.at < 2000) return;
+    lastTick.current = { deadline, at: Date.now() };
+    const delay = Math.random() * 500;
+    const timer = setTimeout(async () => accept(await loadTable(tableId, "POST")), delay);
+    return () => clearTimeout(timer);
+  }, [deadline, left, tableId, accept]);
+
+  // ---------- Player actions ----------
+
+  function apply(request: Promise<TableResult>) {
     startTransition(async () => {
-      const result = await promise;
-      if (result.round) setRound(result.round);
-      const feedback = result.round?.feedback;
+      const result = await request;
+      accept(result.view);
+      setError(result.ok ? null : (result.error ?? "Something went wrong."));
+      const feedback = result.feedback;
       setHint(
         hints && feedback && !feedback.onBook
           ? `Book play: ${actionLabel(feedback.bookAction)} (${feedback.situation})`
           : null,
       );
-      setChips(result.chips);
-      setError(result.ok ? null : (result.error ?? "Something went wrong."));
     });
   }
 
-  function act(type: ActionType) {
-    if (!round || pending) return;
-    apply(playAction(table.id, round.roundId, round.version, type, hints));
-  }
+  const { table, seats, me } = view;
+  const { rules } = table;
+  const mySeat = seats.find((s) => s.playerId === me.playerId) ?? null;
+  const othersActive = seats.filter((s) => s.playerId !== me.playerId && s.status === "active").length;
 
-  function deal() {
+  function placeBet() {
     if (pending) return;
     if (bet < table.minBet || bet > table.maxBet) {
       setError(`Bet must be between ${formatChips(table.minBet)} and ${formatChips(table.maxBet)}.`);
       return;
     }
-    if (bet > chips) {
+    if (bet > me.chips) {
       setError("You don't have enough chips for that bet.");
       return;
     }
-    apply(dealAction(table.id, bet));
+    apply(betAction(tableId, bet));
   }
 
+  function act(type: ActionType) {
+    if (!round || pending) return;
+    apply(playAction(tableId, round.roundId, round.version, type, hints));
+  }
+
+  async function copyInvite() {
+    if (!table.inviteCode) return;
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/blackjack/invite/${table.inviteCode}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Couldn't copy. Share the invite code instead.");
+    }
+  }
+
+  // ---------- Who's who in the round ----------
+
+  const roundSeatFor = (playerId: string) => round?.view.seats.find((s) => s.playerId === playerId) ?? null;
+  const roundSeatIndex = (playerId: string) => round?.view.seats.findIndex((s) => s.playerId === playerId) ?? -1;
+  const nameOf = (playerId: string) =>
+    playerId === me.playerId ? "you" : (seats.find((s) => s.playerId === playerId)?.username ?? "a player who left");
+
+  const waitingOn: string[] = [];
+  if (round && roundActive) {
+    if (round.view.phase === "early") {
+      round.view.seats.forEach((s) => !s.earlyDecided && waitingOn.push(s.playerId));
+    } else if (round.view.turn) {
+      waitingOn.push(round.view.seats[round.view.turn.seat].playerId);
+    }
+  }
+  const myMove = Boolean(round && round.actions.length > 0);
+  const myRoundSeat = round && round.seat >= 0 ? round.view.seats[round.seat] : null;
+  const playerHasBlackjack = myRoundSeat ? isTwoCard21(myRoundSeat.hands[0].cards) && !myRoundSeat.hands[0].fromSplit : false;
+
   function actionCost(type: ActionType): number {
-    if (!seat || !view) return 0;
-    if (type === "insurance") return Math.floor(seat.baseBet / 2);
-    if ((type === "double" || type === "split") && view.turn) return seat.hands[view.turn.hand].bet;
+    if (!myRoundSeat || !round) return 0;
+    if (type === "insurance") return Math.floor(myRoundSeat.baseBet / 2);
+    if ((type === "double" || type === "split") && round.view.turn) return myRoundSeat.hands[round.view.turn.hand].bet;
     return 0;
   }
 
-  const chipSteps = [1, 5, 25, 100, 500, 1000].filter((c) => c <= table.maxBet);
-  const playerHasBlackjack = seat ? isTwoCard21(seat.hands[0].cards) && !seat.hands[0].fromSplit : false;
-
   let status: string | null = null;
-  if (view?.phase === "early") {
-    status = view.dealer[0][0] === "A" ? "Dealer shows an ace." : "Dealer will check for blackjack.";
-  } else if (view?.phase === "playing" && view.peeked) {
+  if (round?.view.phase === "early") {
+    status = round.view.dealer[0][0] === "A" ? "Dealer shows an ace." : "Dealer will check for blackjack.";
+  } else if (round?.view.phase === "playing" && round.view.peeked) {
     status = "Dealer checked: no blackjack.";
-  } else if (view?.phase === "settled" && view.dealerBlackjack) {
+  } else if (round?.view.phase === "settled" && round.view.dealerBlackjack) {
     status = "Dealer has blackjack.";
   }
+
+  const chipSteps = [1, 5, 25, 100, 500, 1000].filter((c) => c <= table.maxBet);
+  const small = table.seats > 2;
 
   return (
     <div className="flex flex-col gap-5">
@@ -139,7 +294,7 @@ export function BlackjackTable({
         </div>
         <p className="flex items-baseline gap-2">
           <span className="text-sm text-starlight/70">Balance</span>
-          <span className="font-display text-base text-neon-gold">{formatChips(chips)}</span>
+          <span className="font-display text-base text-neon-gold">{formatChips(me.chips)}</span>
         </p>
       </div>
 
@@ -149,16 +304,15 @@ export function BlackjackTable({
         className="pixel-panel relative flex min-h-[24rem] flex-col items-center justify-between gap-6 overflow-hidden px-3 py-6 sm:px-6"
         style={{ background: "radial-gradient(ellipse at 50% 0%, #2a1a6e, var(--color-space-900) 70%)" }}
       >
-        {/* Dealer */}
         <div className="flex flex-col items-center gap-2">
           <span className="font-display text-[0.6rem] text-starlight/60">Dealer</span>
           <div className="card-fan flex min-h-20 sm:min-h-28">
-            {view?.dealer.map((card, i) => <PlayingCard key={`${i}-${card}`} card={card} index={i} />)}
-            {view && Array.from({ length: view.dealerHidden }, (_, i) => <CardBack key={`back-${i}`} index={1} />)}
+            {round?.view.dealer.map((card, i) => <PlayingCard key={`${i}-${card}`} card={card} index={i} />)}
+            {round && Array.from({ length: round.view.dealerHidden }, (_, i) => <CardBack key={`back-${i}`} index={1} />)}
           </div>
-          {view && (
+          {round && (
             <span className="font-display text-xs text-starlight">
-              {view.dealerHidden > 0 ? `Showing ${totalLabel(view.dealer)}` : totalLabel(view.dealer)}
+              {round.view.dealerHidden > 0 ? `Showing ${totalLabel(round.view.dealer)}` : totalLabel(round.view.dealer)}
             </span>
           )}
         </div>
@@ -169,63 +323,45 @@ export function BlackjackTable({
           {rules.insurance && " · Insurance pays 2 to 1"}
         </p>
 
-        {/* Player */}
-        <div className="flex w-full flex-wrap items-start justify-center gap-4 sm:gap-8">
-          {seat ? (
-            seat.hands.map((hand, i) => {
-              const active = view?.phase === "playing" && view.turn?.hand === i;
-              const outcome = hand.outcome ? OUTCOME_LABELS[hand.outcome] : null;
-              return (
-                <div
-                  key={i}
-                  className={`flex flex-col items-center gap-2 rounded-lg p-2 ${
-                    active ? "bg-neon-cyan/10 ring-3 ring-neon-cyan" : ""
-                  }`}
-                >
-                  <div className="card-fan flex">
-                    {hand.cards.map((card, c) => (
-                      <PlayingCard key={`${c}-${card}`} card={card} index={c} />
-                    ))}
-                  </div>
-                  <span className="font-display text-xs">{totalLabel(hand.cards, hand.fromSplit)}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="chip-token" title={`Bet: ${formatChips(hand.bet)}`}>
-                      {formatChips(hand.bet)}
-                    </span>
-                    {outcome && (
-                      <span className={`rounded px-2 py-1 font-display text-[0.6rem] ${outcome.style}`}>
-                        {outcome.text}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <p className="py-10 text-starlight/70">Place a bet to deal your first hand.</p>
-          )}
+        <div className="flex w-full flex-wrap items-start justify-center gap-3 sm:gap-4">
+          {Array.from({ length: table.seats }, (_, seatNumber) => {
+            const occupant = seats.find((s) => s.seatNumber === seatNumber) ?? null;
+            return (
+              <SeatSpot
+                key={seatNumber}
+                seatNumber={seatNumber}
+                occupant={occupant}
+                isMe={occupant?.playerId === me.playerId}
+                roundSeat={occupant ? roundSeatFor(occupant.playerId) : null}
+                activeHand={
+                  occupant && round?.view.phase === "playing" && round.view.turn?.seat === roundSeatIndex(occupant.playerId)
+                    ? round.view.turn.hand
+                    : null
+                }
+                waiting={Boolean(occupant && waitingOn.includes(occupant.playerId))}
+                secondsLeft={roundActive ? left : null}
+                canSit={!mySeat && !pending}
+                onSit={() => apply(sitAction(tableId, seatNumber))}
+                small={small}
+              />
+            );
+          })}
         </div>
       </section>
 
       {/* Messages */}
       <div aria-live="polite" className="flex min-h-6 flex-col items-center gap-1 text-center">
-        {view?.reshuffled && view.phase !== "settled" && (
-          <p className="text-sm text-neon-cyan">The shoe was shuffled.</p>
-        )}
+        {round?.view.reshuffled && roundActive && <p className="text-sm text-neon-cyan">The shoe was shuffled.</p>}
         {status && <p className="text-sm text-starlight/80">{status}</p>}
-        {seat && seat.insurance > 0 && (
+        {myRoundSeat && myRoundSeat.insurance > 0 && (
           <p className="text-sm text-starlight/80">
-            Insurance: {formatChips(seat.insurance)}
-            {view?.phase === "settled" && ((seat.insuranceReturned ?? 0) > 0 ? " — paid!" : " — lost")}
+            Insurance: {formatChips(myRoundSeat.insurance)}
+            {round?.view.phase === "settled" && ((myRoundSeat.insuranceReturned ?? 0) > 0 ? " — paid!" : " — lost")}
           </p>
         )}
-        {view?.phase === "settled" && seat && (
-          <ResultLine net={seatNet(seat)} />
-        )}
+        {round?.view.phase === "settled" && myRoundSeat && <ResultLine net={seatNet(myRoundSeat)} />}
         {hint && (
-          <p className="rounded border-2 border-neon-gold bg-neon-gold/10 px-3 py-1.5 text-sm text-starlight">
-            {hint}
-          </p>
+          <p className="rounded border-2 border-neon-gold bg-neon-gold/10 px-3 py-1.5 text-sm text-starlight">{hint}</p>
         )}
         {error && (
           <p role="alert" className="text-sm text-neon-magenta">
@@ -236,28 +372,60 @@ export function BlackjackTable({
 
       {/* Controls */}
       <div className="pixel-panel flex flex-col items-center gap-4 p-4 sm:p-5">
-        {inProgress ? (
-          <div className="flex flex-wrap justify-center gap-3">
-            {round!.actions.length === 0 && <p className="text-starlight/70">Waiting…</p>}
-            {round!.actions.map((type) => {
-              const cost = actionCost(type);
-              const label = type === "insurance" && playerHasBlackjack ? "Even money" : ACTION_LABELS[type];
-              return (
-                <button
-                  key={type}
-                  type="button"
-                  disabled={pending || cost > chips}
-                  onClick={() => act(type)}
-                  className={`pixel-btn disabled:opacity-50 ${ACTION_STYLES[type] ?? "bg-space-800 text-starlight"}`}
-                >
-                  {label}
-                  {cost > 0 && <span className="ml-2 opacity-70">({formatChips(cost)})</span>}
-                </button>
-              );
-            })}
-          </div>
+        {!mySeat ? (
+          <p className="text-center text-starlight/80">
+            You&apos;re watching.{" "}
+            {seats.length < table.seats ? "Pick an empty seat to join the game." : "Every seat is taken."}
+          </p>
+        ) : roundActive ? (
+          myMove ? (
+            <>
+              {left !== null && (
+                <p className={`font-display text-xs ${left <= 5 ? "text-neon-magenta" : "text-neon-cyan"}`}>
+                  Your move · {left}s
+                </p>
+              )}
+              <div className="flex flex-wrap justify-center gap-3">
+                {round!.actions.map((type) => {
+                  const cost = actionCost(type);
+                  const label = type === "insurance" && playerHasBlackjack ? "Even money" : ACTION_LABELS[type];
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      disabled={pending || cost > me.chips}
+                      onClick={() => act(type)}
+                      className={`pixel-btn disabled:opacity-50 ${ACTION_STYLES[type] ?? "bg-space-800 text-starlight"}`}
+                    >
+                      {label}
+                      {cost > 0 && <span className="ml-2 opacity-70">({formatChips(cost)})</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <p className="text-center text-starlight/80">
+              {myRoundSeat ? "" : "You're sitting this hand out. "}
+              {waitingOn.length > 0 && <>Waiting for {waitingOn.map(nameOf).join(", ")}</>}
+              {left !== null && waitingOn.length > 0 && ` · ${left}s`}
+            </p>
+          )
         ) : (
           <>
+            {mySeat.pendingBet !== null && (
+              <p className="text-center text-starlight/80">
+                Your bet: <span className="font-display text-xs text-neon-gold">{formatChips(mySeat.pendingBet)}</span>
+                {othersActive > 0 && " · Waiting for other players to bet"}
+                {left !== null && ` · Dealing in ${left}s`}
+              </p>
+            )}
+            {mySeat.status === "sitting_out" && mySeat.pendingBet === null && (
+              <p className="text-center text-sm text-starlight/70">You&apos;re sitting out. Place a bet to rejoin.</p>
+            )}
+            {mySeat.pendingBet === null && left !== null && (
+              <p className="text-center text-sm text-neon-cyan">Next hand deals in {left}s. Place your bet!</p>
+            )}
             <div className="flex flex-wrap items-center justify-center gap-2">
               {chipSteps.map((step) => (
                 <button
@@ -293,15 +461,16 @@ export function BlackjackTable({
               </label>
               <button
                 type="button"
-                onClick={deal}
+                onClick={placeBet}
                 disabled={pending}
                 className="pixel-btn bg-neon-magenta text-ink disabled:opacity-60"
               >
-                {pending ? "Dealing…" : "Deal"}
+                {pending ? "…" : othersActive === 0 ? "Deal" : mySeat.pendingBet !== null ? "Change bet" : "Place bet"}
               </button>
             </div>
           </>
         )}
+
         <label className="flex cursor-pointer items-center gap-2 text-sm text-starlight/80">
           <input
             type="checkbox"
@@ -317,7 +486,167 @@ export function BlackjackTable({
           </p>
         )}
       </div>
+
+      {/* Table management */}
+      <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
+        {table.inviteCode && (
+          <span className="flex flex-wrap items-center gap-2 text-starlight/80">
+            Invite code <span className="font-display text-xs text-neon-gold">{table.inviteCode}</span>
+            <button
+              type="button"
+              onClick={copyInvite}
+              className="rounded-md border-2 border-space-700 px-2.5 py-1 hover:border-neon-gold"
+            >
+              {copied ? "Link copied!" : "Copy invite link"}
+            </button>
+          </span>
+        )}
+        {mySeat && (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => apply(standAction(tableId))}
+            className="rounded-md border-2 border-space-700 px-2.5 py-1 hover:border-neon-magenta"
+          >
+            Leave seat
+          </button>
+        )}
+        {me.isOwner && !roundActive && (
+          <ConfirmButton label="Close table" confirmLabel="Yes, close it" onConfirm={() => apply(closeTableAction(tableId))} />
+        )}
+      </div>
     </div>
+  );
+}
+
+function SeatSpot({
+  seatNumber,
+  occupant,
+  isMe,
+  roundSeat,
+  activeHand,
+  waiting,
+  secondsLeft,
+  canSit,
+  onSit,
+  small,
+}: {
+  seatNumber: number;
+  occupant: SeatInfo | null;
+  isMe: boolean;
+  roundSeat: Seat | null;
+  activeHand: number | null;
+  waiting: boolean;
+  secondsLeft: number | null;
+  canSit: boolean;
+  onSit: () => void;
+  small: boolean;
+}) {
+  if (!occupant) {
+    return (
+      <div className="flex min-h-24 w-36 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-space-700 p-3">
+        <span className="font-display text-[0.55rem] text-starlight/50">Seat {seatNumber + 1}</span>
+        {canSit ? (
+          <button type="button" onClick={onSit} className="pixel-btn bg-neon-cyan text-ink">
+            Sit here
+          </button>
+        ) : (
+          <span className="text-xs text-starlight/40">Empty</span>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`flex flex-col items-center gap-2 rounded-lg p-2 ${isMe ? "bg-neon-magenta/5" : ""} ${
+        waiting ? "ring-3 ring-neon-cyan" : ""
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <Avatar avatar={occupant.avatar} size={22} />
+        <span className={`max-w-28 truncate text-sm ${isMe ? "text-neon-gold" : "text-starlight"}`}>
+          {isMe ? "You" : occupant.username}
+        </span>
+        {waiting && secondsLeft !== null && (
+          <span className={`font-display text-[0.6rem] ${secondsLeft <= 5 ? "text-neon-magenta" : "text-neon-cyan"}`}>
+            {secondsLeft}s
+          </span>
+        )}
+      </div>
+
+      {roundSeat ? (
+        <div className="flex flex-wrap justify-center gap-2">
+          {roundSeat.hands.map((hand, i) => {
+            const outcome = hand.outcome ? OUTCOME_LABELS[hand.outcome] : null;
+            return (
+              <div
+                key={i}
+                className={`flex flex-col items-center gap-1.5 rounded-md p-1.5 ${
+                  activeHand === i ? "bg-neon-cyan/10 ring-2 ring-neon-cyan" : ""
+                }`}
+              >
+                <div className={`card-fan flex ${small ? "card-fan-sm" : ""}`}>
+                  {hand.cards.map((card, c) => (
+                    <PlayingCard key={`${c}-${card}`} card={card} index={c} size={small ? "sm" : "md"} />
+                  ))}
+                </div>
+                <span className="font-display text-[0.65rem]">{totalLabel(hand.cards, hand.fromSplit)}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="chip-token" title={`Bet: ${formatChips(hand.bet)}`}>
+                    {formatChips(hand.bet)}
+                  </span>
+                  {outcome && (
+                    <span className={`rounded px-1.5 py-0.5 font-display text-[0.55rem] ${outcome.style}`}>
+                      {outcome.text}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : occupant.pendingBet !== null ? (
+        <span className="chip-token" title="Bet for the next hand">
+          {formatChips(occupant.pendingBet)}
+        </span>
+      ) : (
+        <span className="text-xs text-starlight/50">{occupant.status === "sitting_out" ? "Sitting out" : "No bet yet"}</span>
+      )}
+    </div>
+  );
+}
+
+/** A button that asks "are you sure?" inline (the browser's confirm dialog isn't used). */
+function ConfirmButton({ label, confirmLabel, onConfirm }: { label: string; confirmLabel: string; onConfirm: () => void }) {
+  const [asking, setAsking] = useState(false);
+  if (!asking) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAsking(true)}
+        className="rounded-md border-2 border-space-700 px-2.5 py-1 hover:border-neon-magenta"
+      >
+        {label}
+      </button>
+    );
+  }
+  return (
+    <span className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => {
+          setAsking(false);
+          onConfirm();
+        }}
+        className="rounded-md border-2 border-neon-magenta px-2.5 py-1 text-neon-magenta"
+      >
+        {confirmLabel}
+      </button>
+      <button type="button" onClick={() => setAsking(false)} className="px-2 text-starlight/70 underline">
+        Cancel
+      </button>
+    </span>
   );
 }
 
