@@ -5,22 +5,25 @@ import { Avatar } from "@/components/avatar";
 import { LocalTime } from "@/components/local-time";
 import { requirePlayer } from "@/lib/auth";
 import { REFILL_LOW_THRESHOLD, formatChips, getRefillStatus } from "@/lib/chips";
+import { BlackjackStats } from "./blackjack-stats";
 import { EditProfileForm, RefillForm } from "./profile-forms";
 
 export const metadata: Metadata = { title: "Profile · Namretep" };
 
-export default function ProfilePage() {
+export default function ProfilePage({ searchParams }: PageProps<"/profile">) {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pt-6 sm:pt-12">
       <Suspense fallback={<div className="pixel-panel h-72 animate-pulse" />}>
-        <ProfileContent />
+        <ProfileContent searchParams={searchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function ProfileContent() {
+async function ProfileContent({ searchParams }: { searchParams: PageProps<"/profile">["searchParams"] }) {
   const player = await requirePlayer("/profile");
+  const { rules } = await searchParams;
+  const rulesKey = typeof rules === "string" && rules.length <= 100 ? rules : null;
   const refill = getRefillStatus(player.chips, player.lastRefillAt, new Date());
 
   const disabledReason =
@@ -46,14 +49,16 @@ async function ProfileContent() {
         </div>
       </section>
 
+      <Suspense fallback={<div className="pixel-panel h-64 animate-pulse" />}>
+        <BlackjackStats rulesKey={rulesKey} />
+      </Suspense>
+
       <section aria-labelledby="edit-heading" className="pixel-panel flex flex-col gap-6 p-6 sm:p-8">
         <h2 id="edit-heading" className="font-display text-sm text-neon-cyan">
           Edit profile
         </h2>
         <EditProfileForm username={player.username} avatar={player.avatar} />
       </section>
-
-      <p className="text-center text-sm text-starlight/60">Per-game stats are coming soon.</p>
 
       <form action={logOut} className="flex justify-center">
         <button type="submit" className="pixel-btn bg-space-800 text-starlight">
