@@ -17,7 +17,10 @@ export default function BlackjackHome() {
             Lobby
           </Link>
           <Link href="/blackjack/new" className="pixel-btn bg-neon-magenta text-ink">
-            New table
+            New blackjack table
+          </Link>
+          <Link href="/poker/new" className="pixel-btn bg-neon-gold text-ink">
+            New poker table
           </Link>
         </div>
       </div>
@@ -40,7 +43,10 @@ async function MyTables() {
         </p>
         <div className="flex flex-wrap justify-center gap-3">
           <Link href="/blackjack/new" className="pixel-btn bg-neon-cyan text-ink">
-            Create a table
+            Blackjack table
+          </Link>
+          <Link href="/poker/new" className="pixel-btn bg-neon-gold text-ink">
+            Poker table
           </Link>
           <Link href="/lobby" className="pixel-btn bg-space-800 text-starlight">
             Open the lobby

@@ -6,6 +6,7 @@ import { LocalTime } from "@/components/local-time";
 import { requirePlayer } from "@/lib/auth";
 import { REFILL_LOW_THRESHOLD, formatChips, getRefillStatus } from "@/lib/chips";
 import { BlackjackStats } from "./blackjack-stats";
+import { PokerStats } from "./poker-stats";
 import { EditProfileForm, RefillForm } from "./profile-forms";
 
 export const metadata: Metadata = { title: "Profile · Namretep" };
@@ -51,6 +52,10 @@ async function ProfileContent({ searchParams }: { searchParams: PageProps<"/prof
 
       <Suspense fallback={<div className="pixel-panel h-64 animate-pulse" />}>
         <BlackjackStats rulesKey={rulesKey} />
+      </Suspense>
+
+      <Suspense fallback={<div className="pixel-panel h-48 animate-pulse" />}>
+        <PokerStats />
       </Suspense>
 
       <section aria-labelledby="edit-heading" className="pixel-panel flex flex-col gap-6 p-6 sm:p-8">
