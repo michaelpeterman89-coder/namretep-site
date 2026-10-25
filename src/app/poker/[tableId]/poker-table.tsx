@@ -13,7 +13,6 @@ import { pokerSummary } from "@/lib/games/poker/table-rules";
 import { playSound } from "@/lib/sound";
 import { createClient } from "@/lib/supabase/client";
 import type { PokerSeatView, PokerView } from "@/server/poker";
-import { AlienHand } from "@/components/card-table/table-art";
 import {
   buyInAction,
   closePokerTableAction,
@@ -21,7 +20,9 @@ import {
   pokerPlayAction,
   type PokerResult,
 } from "../actions";
+import { ChipRack } from "./chip-rack";
 import { boardSlot, computePokerPlan, holeSlot } from "./poker-dealing";
+import { seatPosition } from "./seat-layout";
 
 type Synced = { view: PokerView; offset: number; plan: DealPlan; busyUntil: number };
 
@@ -36,16 +37,6 @@ async function loadTable(tableId: string, method: "GET" | "POST"): Promise<Poker
 }
 
 const handLike = (v: PokerView) => (v.hand ? { id: v.hand.id, view: v.hand.view } : null);
-
-/**
- * Where a seat sits around the oval (`bottomSeat` at the bottom centre). The
- * oval's size comes from CSS (.around), so phones can use a narrower one.
- */
-function around(seatNumber: number, total: number, bottomSeat: number, radius = 1) {
-  const k = (seatNumber - bottomSeat + total) % total;
-  const angle = Math.PI / 2 + (k * 2 * Math.PI) / total;
-  return { "--x": Math.cos(angle) * radius, "--y": Math.sin(angle) * radius } as React.CSSProperties;
-}
 
 function actionLabel(entry: LogEntry | undefined): string | null {
   if (!entry) return null;
@@ -353,11 +344,13 @@ export function PokerTableView({ initialView }: { initialView: PokerView }) {
       {/* The table */}
       <DealContext value={{ shoeRef, discardRef, trayRef, plan, settlement: null }}>
         <section aria-label="Poker table" className="relative mx-auto aspect-[4/5] w-full max-w-5xl sm:aspect-[16/9]">
-          <div className="poker-felt absolute inset-x-[6%] inset-y-[9%] overflow-hidden">
-            <AlienHand side="left" />
-            <AlienHand side="right" />
-            <Shoe cardsLeft={null} className="top-[10%] right-[16%]" />
-          </div>
+          <div className="poker-felt absolute inset-x-[6%] inset-y-[9%]" />
+          {/* The house: chip rack at the top centre, deck beside it. Seats leave this spot free. */}
+          <ChipRack className="top-[7%] left-1/2 -translate-x-1/2 sm:top-[11%]" />
+          <Shoe
+            cardsLeft={null}
+            className="top-[18%] left-1/2 -translate-x-1/2 sm:top-[12%] sm:left-[calc(50%+6.25rem)] sm:translate-x-0"
+          />
 
           {/* Board and pot */}
           <div className="absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2">
@@ -394,8 +387,8 @@ export function PokerTableView({ initialView }: { initialView: PokerView }) {
             const occupant = seats.find((s) => s.seatNumber === seatNumber) ?? null;
             const index = handIndexOfSeat(seatNumber);
             const inHand = hv && index >= 0 ? hv.seats[index] : null;
-            const position = around(seatNumber, table.seats, bottomSeat);
-            const betPosition = around(seatNumber, table.seats, bottomSeat, 0.58);
+            const position = seatPosition(seatNumber, table.seats, bottomSeat);
+            const betPosition = seatPosition(seatNumber, table.seats, bottomSeat, 0.58);
             const lastEntry = hv && index >= 0 ? [...hv.log].reverse().find((e) => e.seat === index && e.street === hv.street) : undefined;
             return (
               <div key={seatNumber}>
