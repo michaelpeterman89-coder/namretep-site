@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { CrtOverlay, CrtToggle } from "@/components/crt";
 import { HeaderAccount } from "@/components/header-account";
+import { SoundToggle } from "@/components/sound-toggle";
 import "./globals.css";
 
 const pixelFont = Press_Start_2P({
@@ -53,7 +54,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
 
         <footer className="flex flex-col items-center gap-4 px-4 py-6 text-center text-sm text-starlight/60">
           <p>Virtual chips only. No real money, no purchases, no cash-out.</p>
-          <CrtToggle />
+          <div className="flex flex-wrap justify-center gap-3">
+            <CrtToggle />
+            <SoundToggle />
+          </div>
         </footer>
 
         <CrtOverlay />
