@@ -6,6 +6,8 @@ import { formatChips } from "@/lib/chips";
 import { handValue, isTwoCard21, type Card } from "@/lib/games/blackjack/cards";
 import type { ActionType, PlayerHand, Seat } from "@/lib/games/blackjack/engine";
 import { houseEdge, rulesSummary } from "@/lib/games/blackjack/rules";
+import { actionLabel } from "@/lib/games/blackjack/strategy";
+import { useStoredToggle } from "@/lib/use-stored-toggle";
 import type { GameTable, RoundForPlayer } from "@/server/blackjack";
 import { dealAction, playAction, type PlayResult } from "../actions";
 
@@ -62,6 +64,8 @@ export function BlackjackTable({
   const [chips, setChips] = useState(initialChips);
   const [bet, setBet] = useState(Math.min(Math.max(table.minBet, 10), table.maxBet));
   const [error, setError] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
+  const [hints, setHints] = useStoredToggle("namretep:hints", false);
   const [pending, startTransition] = useTransition();
 
   const { rules } = table;
@@ -73,6 +77,12 @@ export function BlackjackTable({
     startTransition(async () => {
       const result = await promise;
       if (result.round) setRound(result.round);
+      const feedback = result.round?.feedback;
+      setHint(
+        hints && feedback && !feedback.onBook
+          ? `Book play: ${actionLabel(feedback.bookAction)} (${feedback.situation})`
+          : null,
+      );
       setChips(result.chips);
       setError(result.ok ? null : (result.error ?? "Something went wrong."));
     });
@@ -80,7 +90,7 @@ export function BlackjackTable({
 
   function act(type: ActionType) {
     if (!round || pending) return;
-    apply(playAction(table.id, round.roundId, round.version, type));
+    apply(playAction(table.id, round.roundId, round.version, type, hints));
   }
 
   function deal() {
@@ -212,6 +222,11 @@ export function BlackjackTable({
         {view?.phase === "settled" && seat && (
           <ResultLine net={seatNet(seat)} />
         )}
+        {hint && (
+          <p className="rounded border-2 border-neon-gold bg-neon-gold/10 px-3 py-1.5 text-sm text-starlight">
+            {hint}
+          </p>
+        )}
         {error && (
           <p role="alert" className="text-sm text-neon-magenta">
             {error}
@@ -286,6 +301,20 @@ export function BlackjackTable({
               </button>
             </div>
           </>
+        )}
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-starlight/80">
+          <input
+            type="checkbox"
+            checked={hints}
+            onChange={(e) => setHints(e.target.checked)}
+            className="size-4 accent-neon-gold"
+          />
+          Show a hint after a mistake
+        </label>
+        {hints && (
+          <p className="-mt-2 text-center text-xs text-starlight/60">
+            Decisions made with hints on don&apos;t count toward your On Book %.
+          </p>
         )}
       </div>
     </div>
