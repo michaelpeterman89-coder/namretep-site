@@ -17,7 +17,7 @@ export const DEAL_GAP_MS = 450;
 export const DEAL_FLIGHT_MS = 550;
 export const FLIP_MS = 650;
 
-type PlanEntry = { delay: number; kind: "deal" | "flip" };
+export type PlanEntry = { delay: number; kind: "deal" | "flip" };
 export type DealPlan = { entries: Map<string, PlanEntry>; durationMs: number };
 export const EMPTY_PLAN: DealPlan = { entries: new Map(), durationMs: 0 };
 
@@ -311,10 +311,17 @@ export function DiscardTray() {
 }
 
 /** The card shoe the dealer deals from. */
-export function Shoe({ cardsLeft }: { cardsLeft: number | null }) {
+export function Shoe({
+  cardsLeft,
+  className = "top-3 right-3 sm:top-5 sm:right-5",
+}: {
+  cardsLeft: number | null;
+  /** Where the shoe sits on the table (position classes). */
+  className?: string;
+}) {
   const { shoeRef } = useContext(DealContext);
   return (
-    <div className="absolute top-3 right-3 flex flex-col items-center gap-1 sm:top-5 sm:right-5" aria-hidden>
+    <div className={`absolute flex flex-col items-center gap-1 ${className}`} aria-hidden>
       <div ref={shoeRef} className="shoe" />
       {cardsLeft !== null && <span className="font-display text-[0.5rem] text-starlight/70">{cardsLeft}</span>}
     </div>

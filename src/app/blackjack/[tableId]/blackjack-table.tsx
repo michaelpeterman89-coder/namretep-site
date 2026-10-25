@@ -42,8 +42,8 @@ import {
   Shoe,
   type DealPlan,
   type Settlement,
-} from "./dealing";
-import { AlienHand, FeltMarkings, seatArcOffset } from "./table-art";
+} from "@/components/card-table/dealing";
+import { AlienHand, FeltMarkings, seatArcOffset } from "@/components/card-table/table-art";
 
 const ACTION_LABELS: Record<ActionType, string> = {
   hit: "Hit",
