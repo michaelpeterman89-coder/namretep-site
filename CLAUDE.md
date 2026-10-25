@@ -22,6 +22,14 @@ Secrets live in `.env.local` (never committed) and in Vercel Environment Variabl
 
 ---
 
+## Deployment
+
+- Vercel deploys production from `main`: **every push to `main` goes live at www.namretep.com.** Only push to `main` when the change is ready for players, after build, lint, and tests pass, and ask the owner first.
+- `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are set in Vercel for all environments. Any new env var must be added in Vercel too (and to `.env.example`), or the deploy will break.
+- After a deploy, check www.namretep.com/api/health to confirm Supabase is connected.
+
+---
+
 ## Core rules for how the game code works
 
 1. **The server is the dealer.** Card shuffling, the shoe, dealing, and payouts happen only on the server (Next.js route handlers / server actions or Supabase database functions). The browser never receives undealt cards or the dealer's hole card before it's revealed.
