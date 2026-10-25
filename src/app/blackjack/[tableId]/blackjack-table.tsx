@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/avatar";
-import { CardBack, PlayingCard } from "@/components/playing-card";
 import { formatChips } from "@/lib/chips";
 import { handValue, isTwoCard21, type Card } from "@/lib/games/blackjack/cards";
 import type { ActionType, PlayerHand, Seat } from "@/lib/games/blackjack/engine";
@@ -21,6 +20,7 @@ import {
   standAction,
   type TableResult,
 } from "../actions";
+import { computePlan, DealContext, dealerSlot, DealtCard, EMPTY_PLAN, playerSlot, prefersReducedMotion, Shoe, type DealPlan } from "./dealing";
 
 const ACTION_LABELS: Record<ActionType, string> = {
   hit: "Hit",
@@ -68,7 +68,15 @@ function secondsLeft(deadline: string | null | undefined, serverNow: number): nu
   return Math.max(0, Math.ceil((new Date(deadline).getTime() - serverNow) / 1000));
 }
 
-type Synced = { view: TableView; offset: number };
+type Synced = {
+  view: TableView;
+  /** Server clock minus browser clock, for countdowns. */
+  offset: number;
+  /** Cards to animate for the latest update. */
+  plan: DealPlan;
+  /** Totals, results, and buttons wait until this time, so cards land first. */
+  busyUntil: number;
+};
 
 /** GET refreshes the table; POST also finishes moves whose time ran out. */
 async function loadTable(tableId: string, method: "GET" | "POST"): Promise<TableView | null> {
@@ -84,10 +92,13 @@ async function loadTable(tableId: string, method: "GET" | "POST"): Promise<Table
 export function BlackjackTable({ initialView }: { initialView: TableView }) {
   const router = useRouter();
   const tableId = initialView.table.id;
-  const [{ view, offset }, setSynced] = useState<Synced>(() => ({
+  const [{ view, offset, plan, busyUntil }, setSynced] = useState<Synced>(() => ({
     view: initialView,
     offset: new Date(initialView.serverNow).getTime() - Date.now(),
+    plan: EMPTY_PLAN,
+    busyUntil: 0,
   }));
+  const shoeRef = useRef<HTMLDivElement>(null);
   const [now, setNow] = useState(() => Date.now());
   const [bet, setBet] = useState(() => Math.min(Math.max(initialView.table.minBet, 10), initialView.table.maxBet));
   const [error, setError] = useState<string | null>(null);
@@ -104,7 +115,18 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
     (next: TableView | null) => {
       if (!next || next.serverNow < latestAt.current) return;
       latestAt.current = next.serverNow;
-      setSynced({ view: next, offset: new Date(next.serverNow).getTime() - Date.now() });
+      const receivedAt = Date.now();
+      const reduced = prefersReducedMotion();
+      setSynced((prev) => {
+        const nextPlan = computePlan(prev.view.round, next.round, reduced);
+        return {
+          view: next,
+          offset: new Date(next.serverNow).getTime() - receivedAt,
+          plan: nextPlan,
+          // An update with nothing to animate leaves any running deal alone.
+          busyUntil: nextPlan.durationMs > 0 ? receivedAt + nextPlan.durationMs : prev.busyUntil,
+        };
+      });
       if (next.me.chips !== chips.current) {
         chips.current = next.me.chips;
         router.refresh(); // update the chip count in the header
@@ -173,11 +195,19 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
   const deadline = roundActive ? round?.deadline : view.table.bettingDeadline;
   const left = secondsLeft(deadline, now + offset);
 
+  // While cards are being dealt, results stay hidden.
+  const busy = now < busyUntil;
+
+  // Tick while there's a countdown, or until the current deal has finished.
   useEffect(() => {
-    if (!deadline) return;
-    const timer = setInterval(() => setNow(Date.now()), 250);
+    if (!deadline && Date.now() >= busyUntil) return;
+    const timer = setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      if (!deadline && t >= busyUntil) clearInterval(timer);
+    }, 250);
     return () => clearInterval(timer);
-  }, [deadline]);
+  }, [deadline, busyUntil]);
 
   // When a countdown hits zero, ask the server to move things along. It
   // checks the deadline itself, so it's fine if several viewers ask at once.
@@ -224,6 +254,18 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
       return;
     }
     apply(betAction(tableId, bet));
+  }
+
+  function closeTable() {
+    startTransition(async () => {
+      const result = await closeTableAction(tableId);
+      if (result.ok) {
+        router.push("/lobby");
+        return;
+      }
+      accept(result.view);
+      setError(result.error ?? "Something went wrong.");
+    });
   }
 
   function act(type: ActionType) {
@@ -280,6 +322,18 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
   const chipSteps = [1, 5, 25, 100, 500, 1000].filter((c) => c <= table.maxBet);
   const small = table.seats > 2;
 
+  if (table.status === "closed") {
+    return (
+      <div className="pixel-panel mx-auto flex max-w-md flex-col items-center gap-4 p-8 text-center">
+        <h1 className="font-display text-base text-starlight">{table.name}</h1>
+        <p className="text-starlight/70">This table was closed by its host.</p>
+        <button type="button" onClick={() => router.push("/lobby")} className="pixel-btn bg-neon-cyan text-ink">
+          Go to the lobby
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5">
       {/* Table info */}
@@ -299,20 +353,28 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
       </div>
 
       {/* Felt */}
+      <DealContext value={{ shoeRef, plan }}>
       <section
         aria-label="Blackjack table"
         className="pixel-panel relative flex min-h-[24rem] flex-col items-center justify-between gap-6 overflow-hidden px-3 py-6 sm:px-6"
         style={{ background: "radial-gradient(ellipse at 50% 0%, #2a1a6e, var(--color-space-900) 70%)" }}
       >
+        <Shoe cardsLeft={round ? round.view.cardsLeftInShoe : null} />
         <div className="flex flex-col items-center gap-2">
           <span className="font-display text-[0.6rem] text-starlight/60">Dealer</span>
           <div className="card-fan flex min-h-20 sm:min-h-28">
-            {round?.view.dealer.map((card, i) => <PlayingCard key={`${i}-${card}`} card={card} index={i} />)}
-            {round && Array.from({ length: round.view.dealerHidden }, (_, i) => <CardBack key={`back-${i}`} index={1} />)}
+            {round &&
+              Array.from({ length: round.view.dealer.length + round.view.dealerHidden }, (_, i) => (
+                <DealtCard key={`${round.roundId}-${i}`} slot={dealerSlot(i)} card={round.view.dealer[i] ?? null} />
+              ))}
           </div>
           {round && (
-            <span className="font-display text-xs text-starlight">
-              {round.view.dealerHidden > 0 ? `Showing ${totalLabel(round.view.dealer)}` : totalLabel(round.view.dealer)}
+            <span className="min-h-4 font-display text-xs text-starlight">
+              {busy
+                ? " "
+                : round.view.dealerHidden > 0
+                  ? `Showing ${totalLabel(round.view.dealer)}`
+                  : totalLabel(round.view.dealer)}
             </span>
           )}
         </div>
@@ -343,24 +405,29 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
                 canSit={!mySeat && !pending}
                 onSit={() => apply(sitAction(tableId, seatNumber))}
                 small={small}
+                revealed={!busy}
+                roundKey={round?.roundId ?? ""}
               />
             );
           })}
         </div>
       </section>
+      </DealContext>
 
       {/* Messages */}
       <div aria-live="polite" className="flex min-h-6 flex-col items-center gap-1 text-center">
         {round?.view.reshuffled && roundActive && <p className="text-sm text-neon-cyan">The shoe was shuffled.</p>}
-        {status && <p className="text-sm text-starlight/80">{status}</p>}
+        {status && !busy && <p className="text-sm text-starlight/80">{status}</p>}
         {myRoundSeat && myRoundSeat.insurance > 0 && (
           <p className="text-sm text-starlight/80">
             Insurance: {formatChips(myRoundSeat.insurance)}
-            {round?.view.phase === "settled" && ((myRoundSeat.insuranceReturned ?? 0) > 0 ? " — paid!" : " — lost")}
+            {round?.view.phase === "settled" &&
+              !busy &&
+              ((myRoundSeat.insuranceReturned ?? 0) > 0 ? " — paid!" : " — lost")}
           </p>
         )}
-        {round?.view.phase === "settled" && myRoundSeat && <ResultLine net={seatNet(myRoundSeat)} />}
-        {hint && (
+        {round?.view.phase === "settled" && myRoundSeat && !busy && <ResultLine net={seatNet(myRoundSeat)} />}
+        {hint && !busy && (
           <p className="rounded border-2 border-neon-gold bg-neon-gold/10 px-3 py-1.5 text-sm text-starlight">{hint}</p>
         )}
         {error && (
@@ -393,7 +460,7 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
                     <button
                       key={type}
                       type="button"
-                      disabled={pending || cost > me.chips}
+                      disabled={pending || busy || cost > me.chips}
                       onClick={() => act(type)}
                       className={`pixel-btn disabled:opacity-50 ${ACTION_STYLES[type] ?? "bg-space-800 text-starlight"}`}
                     >
@@ -512,7 +579,7 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
           </button>
         )}
         {me.isOwner && !roundActive && (
-          <ConfirmButton label="Close table" confirmLabel="Yes, close it" onConfirm={() => apply(closeTableAction(tableId))} />
+          <ConfirmButton label="Close table" confirmLabel="Yes, close it" onConfirm={closeTable} />
         )}
       </div>
     </div>
@@ -530,6 +597,8 @@ function SeatSpot({
   canSit,
   onSit,
   small,
+  revealed,
+  roundKey,
 }: {
   seatNumber: number;
   occupant: SeatInfo | null;
@@ -541,6 +610,10 @@ function SeatSpot({
   canSit: boolean;
   onSit: () => void;
   small: boolean;
+  /** False while cards are still being dealt: totals and results wait. */
+  revealed: boolean;
+  /** Changes every round, so each new hand's cards are new elements that fly in. */
+  roundKey: string;
 }) {
   if (!occupant) {
     return (
@@ -578,20 +651,27 @@ function SeatSpot({
       {roundSeat ? (
         <div className="flex flex-wrap justify-center gap-2">
           {roundSeat.hands.map((hand, i) => {
-            const outcome = hand.outcome ? OUTCOME_LABELS[hand.outcome] : null;
+            const outcome = hand.outcome && revealed ? OUTCOME_LABELS[hand.outcome] : null;
             return (
               <div
-                key={i}
+                key={`${roundKey}-${i}`}
                 className={`flex flex-col items-center gap-1.5 rounded-md p-1.5 ${
                   activeHand === i ? "bg-neon-cyan/10 ring-2 ring-neon-cyan" : ""
                 }`}
               >
                 <div className={`card-fan flex ${small ? "card-fan-sm" : ""}`}>
                   {hand.cards.map((card, c) => (
-                    <PlayingCard key={`${c}-${card}`} card={card} index={c} size={small ? "sm" : "md"} />
+                    <DealtCard
+                      key={`${c}-${card}`}
+                      slot={playerSlot(roundSeat.playerId, i, c)}
+                      card={card}
+                      size={small ? "sm" : "md"}
+                    />
                   ))}
                 </div>
-                <span className="font-display text-[0.65rem]">{totalLabel(hand.cards, hand.fromSplit)}</span>
+                <span className="min-h-3 font-display text-[0.65rem]">
+                  {revealed ? totalLabel(hand.cards, hand.fromSplit) : " "}
+                </span>
                 <div className="flex items-center gap-1.5">
                   <span className="chip-token" title={`Bet: ${formatChips(hand.bet)}`}>
                     {formatChips(hand.bet)}
