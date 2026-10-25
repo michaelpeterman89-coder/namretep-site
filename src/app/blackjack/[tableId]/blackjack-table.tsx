@@ -42,6 +42,7 @@ import {
   type DealPlan,
   type Settlement,
 } from "./dealing";
+import { AlienHand, FeltMarkings, seatArcOffset } from "./table-art";
 
 const ACTION_LABELS: Record<ActionType, string> = {
   hit: "Hit",
@@ -448,11 +449,12 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
       <DealContext value={{ shoeRef, discardRef, trayRef, plan, settlement }}>
       <section
         aria-label="Blackjack table"
-        className={`pixel-panel relative flex min-h-[24rem] flex-col items-center justify-between gap-6 overflow-hidden px-3 py-6 sm:px-6 ${
+        className={`casino-table relative flex min-h-[24rem] flex-col items-center justify-between gap-5 overflow-hidden px-3 pt-6 pb-12 sm:px-8 sm:pb-16 ${
           bigWin ? "table-shake" : ""
         }`}
-        style={{ background: "radial-gradient(ellipse at 50% 0%, #2a1a6e, var(--color-space-900) 70%)" }}
       >
+        <AlienHand side="left" />
+        <AlienHand side="right" />
         <Shoe cardsLeft={round ? round.view.cardsLeftInShoe : null} />
         <DiscardTray />
         <div className="flex flex-col items-center gap-2">
@@ -477,11 +479,7 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
           </span>
         </div>
 
-        <p className="text-center font-display text-[0.55rem] leading-relaxed text-neon-gold/70 sm:text-[0.65rem]">
-          Blackjack pays {rules.blackjackPayout.replace(":", " to ")} · Dealer {rules.dealerHitsSoft17 ? "hits" : "stands"} on
-          soft 17
-          {rules.insurance && " · Insurance pays 2 to 1"}
-        </p>
+        <FeltMarkings rules={rules} />
 
         <div className="flex w-full flex-wrap items-start justify-center gap-3 sm:gap-4">
           {Array.from({ length: table.seats }, (_, seatNumber) => {
@@ -490,6 +488,7 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
               <SeatSpot
                 key={seatNumber}
                 seatNumber={seatNumber}
+                arc={seatArcOffset(seatNumber, table.seats)}
                 occupant={occupant}
                 isMe={occupant?.playerId === me.playerId}
                 roundSeat={occupant && displayRound ? roundSeatFor(occupant.playerId) : null}
@@ -707,6 +706,7 @@ function SeatSpot({
   roundKey,
   settlement,
   now,
+  arc,
 }: {
   seatNumber: number;
   occupant: SeatInfo | null;
@@ -724,10 +724,16 @@ function SeatSpot({
   roundKey: string;
   settlement: Settlement | null;
   now: number;
+  /** How far down the table's curve this seat sits (wide screens only). */
+  arc: number;
 }) {
+  const arcStyle = { "--arc": `${arc}px` } as React.CSSProperties;
   if (!occupant) {
     return (
-      <div className="flex min-h-24 w-36 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-space-700 p-3">
+      <div
+        className="seat-arc flex min-h-24 w-36 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-space-700 p-3"
+        style={arcStyle}
+      >
         <span className="font-display text-[0.55rem] text-starlight/50">Seat {seatNumber + 1}</span>
         {canSit ? (
           <button type="button" onClick={onSit} className="pixel-btn bg-neon-cyan text-ink">
@@ -742,9 +748,10 @@ function SeatSpot({
 
   return (
     <div
-      className={`flex flex-col items-center gap-2 rounded-lg p-2 ${isMe ? "bg-neon-magenta/5" : ""} ${
+      className={`seat-arc flex flex-col items-center gap-2 rounded-lg p-2 ${isMe ? "bg-neon-magenta/5" : ""} ${
         waiting ? "ring-3 ring-neon-cyan" : ""
       }`}
+      style={arcStyle}
     >
       <div className="flex items-center gap-2">
         <Avatar avatar={occupant.avatar} size={22} />
@@ -785,7 +792,9 @@ function SeatSpot({
                   {revealed ? totalLabel(hand.cards, hand.fromSplit) : " "}
                 </span>
                 <div className="flex items-end gap-1.5">
-                  <HandChips hand={hand} paid={paid} leaveAt={settlement?.clearAt} size={small ? "sm" : "md"} />
+                  <span className="bet-spot">
+                    <HandChips hand={hand} paid={paid} leaveAt={settlement?.clearAt} size={small ? "sm" : "md"} />
+                  </span>
                   {paid && (hand.returned ?? 0) > hand.bet && <Burst big={hand.outcome === "blackjack"} />}
                   {outcome && (
                     <span className={`rounded px-1.5 py-0.5 font-display text-[0.55rem] ${outcome.style}`}>
@@ -798,9 +807,16 @@ function SeatSpot({
           })}
         </div>
       ) : occupant.pendingBet !== null ? (
-        <ChipStack amount={occupant.pendingBet} size={small ? "sm" : "md"} />
+        <span className="bet-spot">
+          <ChipStack amount={occupant.pendingBet} size={small ? "sm" : "md"} />
+        </span>
       ) : (
-        <span className="text-xs text-starlight/50">{occupant.status === "sitting_out" ? "Sitting out" : "No bet yet"}</span>
+        <>
+          <span className="bet-spot">
+            <span className="font-display text-[0.5rem] text-neon-gold/40">BET</span>
+          </span>
+          <span className="text-xs text-starlight/50">{occupant.status === "sitting_out" ? "Sitting out" : "No bet yet"}</span>
+        </>
       )}
     </div>
   );

@@ -346,6 +346,84 @@ body {
   }
 }
 
+/* ---------- The casino table ---------- */
+
+/* Half-moon felt: straight on the dealer's side, curved on the players' side,
+   with a padded rail around it. */
+.casino-table {
+  border: 4px solid var(--color-ink);
+  border-radius: 1.25rem 1.25rem 50% 50% / 1.25rem 1.25rem 6rem 6rem;
+  background:
+    radial-gradient(circle at 20% 30%, rgb(255 255 255 / 0.07) 1px, transparent 1.5px) 0 0 / 22px 22px,
+    radial-gradient(circle at 70% 75%, rgb(62 240 255 / 0.08) 1px, transparent 1.5px) 0 0 / 35px 35px,
+    radial-gradient(ellipse at 50% -10%, #3a2a9a 0%, #241b6b 40%, #120e3d 100%);
+  box-shadow:
+    inset 0 0 0 3px rgb(62 240 255 / 0.15),
+    inset 0 -40px 70px rgb(6 4 26 / 0.6),
+    0 0 0 10px #3b2470,
+    0 0 0 13px var(--color-ink),
+    0 0 50px 16px rgb(123 62 255 / 0.25);
+  margin: 13px;
+}
+
+@media (min-width: 640px) {
+  .casino-table {
+    border-radius: 1.5rem 1.5rem 50% 50% / 1.5rem 1.5rem 10rem 10rem;
+  }
+}
+
+.felt-text {
+  font-family: var(--font-display);
+}
+
+/* Seats sit lower toward the middle of the curve (wide screens only). */
+@media (min-width: 640px) {
+  .seat-arc {
+    transform: translateY(var(--arc, 0px));
+  }
+}
+
+/* A printed betting circle in front of each seat. */
+.bet-spot {
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: 3.4rem;
+  min-height: 3.4rem;
+  padding: 0.35rem 0.5rem;
+  border: 2px dashed rgb(255 207 62 / 0.45);
+  border-radius: 9999px;
+  background: rgb(6 4 26 / 0.25);
+}
+
+/* The alien dealer's hands, resting on the table edge either side of the tray. */
+.alien-hand {
+  position: absolute;
+  top: 0.25rem;
+  display: none;
+  width: 4.5rem;
+  height: auto;
+  filter: drop-shadow(3px 3px 0 rgb(10 7 22 / 0.6));
+  pointer-events: none;
+}
+
+.alien-hand-left {
+  right: calc(50% + 7.5rem);
+  transform: rotate(8deg);
+}
+
+.alien-hand-right {
+  left: calc(50% + 7.5rem);
+  transform: scaleX(-1) rotate(8deg);
+}
+
+@media (min-width: 640px) {
+  .alien-hand {
+    display: block;
+  }
+}
+
 /* ---------- Chips (see components/chip.tsx) ---------- */
 
 .chip {
