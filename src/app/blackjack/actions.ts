@@ -1,21 +1,28 @@
 "use server";
 
-import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import type { ActionType } from "@/lib/games/blackjack";
 import { getCurrentPlayer } from "@/lib/auth";
 import {
+  getTableView,
+  isRoundInProgress,
+  placeBet,
+  runTimeouts,
+  takeAction,
+  type RoundForPlayer,
+  type TableView,
+} from "@/server/blackjack";
+import {
+  canViewTable,
+  closeTable,
   createBlackjackTable,
-  dealRound,
   GameError,
-  getPlayerChips,
-  getRoundForPlayer,
   getTable,
   isId,
-  takeAction,
+  sitDown,
+  standUp,
   type GameTable,
-  type RoundForPlayer,
-} from "@/server/blackjack";
+} from "@/server/tables";
 
 // Server actions are public endpoints: never trust the arguments' types.
 
@@ -52,46 +59,55 @@ export async function createTableAction(_prev: CreateTableState, formData: FormD
   redirect(`/blackjack/${tableId}`);
 }
 
-export type PlayResult = {
+export type TableResult = {
   ok: boolean;
   error?: string;
-  /** The latest round (also sent on errors, so the screen can resync). */
-  round: RoundForPlayer | null;
-  chips: number;
+  /** The latest table state (also sent on errors, so the screen can resync). */
+  view: TableView | null;
+  feedback?: RoundForPlayer["feedback"];
 };
 
+/**
+ * Checks the player is logged in and may see the table, runs `work`, and
+ * returns the fresh table state either way.
+ */
 async function run(
   tableId: unknown,
-  work: (table: GameTable, playerId: string) => Promise<RoundForPlayer>,
-): Promise<PlayResult> {
+  work: (table: GameTable, playerId: string) => Promise<RoundForPlayer | void>,
+): Promise<TableResult> {
   const player = await getCurrentPlayer();
-  if (!player) return { ok: false, error: "You're not logged in. Please log in again.", round: null, chips: 0 };
-  if (!isId(tableId)) return { ok: false, error: "Table not found.", round: null, chips: player.chips };
-
+  if (!player) return { ok: false, error: "You're not logged in. Please log in again.", view: null };
+  if (!isId(tableId)) return { ok: false, error: "Table not found.", view: null };
   const table = await getTable(tableId);
-  if (!table || table.ownerId !== player.id) {
-    return { ok: false, error: "Table not found.", round: null, chips: player.chips };
-  }
+  if (!table || !(await canViewTable(table, player.id))) return { ok: false, error: "Table not found.", view: null };
 
   try {
-    const round = await work(table, player.id);
-    refresh(); // updates the chip count in the header
-    return { ok: true, round, chips: await getPlayerChips(player.id) };
+    const result = await work(table, player.id);
+    const latest = (await getTable(tableId)) ?? table;
+    return { ok: true, view: await getTableView(latest, player.id), feedback: result?.feedback ?? null };
   } catch (e) {
     if (!(e instanceof GameError)) throw e;
-    return {
-      ok: false,
-      error: e.message,
-      round: await getRoundForPlayer(table, player.id),
-      chips: await getPlayerChips(player.id),
-    };
+    const latest = (await getTable(tableId)) ?? table;
+    return { ok: false, error: e.message, view: await getTableView(latest, player.id) };
   }
 }
 
-export async function dealAction(tableId: unknown, bet: unknown): Promise<PlayResult> {
+export async function sitAction(tableId: unknown, seatNumber: unknown): Promise<TableResult> {
+  return run(tableId, (table, playerId) => sitDown(table, playerId, Number(seatNumber)));
+}
+
+export async function standAction(tableId: unknown): Promise<TableResult> {
+  return run(tableId, async (table, playerId) => {
+    await standUp(table, playerId);
+    // Finish any hand they left behind straight away.
+    await runTimeouts(table);
+  });
+}
+
+export async function betAction(tableId: unknown, bet: unknown): Promise<TableResult> {
   return run(tableId, async (table, playerId) => {
     if (typeof bet !== "number") throw new GameError("Enter a bet.");
-    return dealRound(table, playerId, bet);
+    await placeBet(table, playerId, bet);
   });
 }
 
@@ -101,11 +117,17 @@ export async function playAction(
   version: unknown,
   type: unknown,
   hintsEnabled: unknown = false,
-): Promise<PlayResult> {
+): Promise<TableResult> {
   return run(tableId, async (table, playerId) => {
     if (!isId(roundId) || !Number.isInteger(version) || !ACTION_TYPES.includes(type as ActionType)) {
       throw new GameError("That move isn't allowed right now.");
     }
     return takeAction(table, playerId, roundId, version as number, type as ActionType, hintsEnabled === true);
+  });
+}
+
+export async function closeTableAction(tableId: unknown): Promise<TableResult> {
+  return run(tableId, async (table, playerId) => {
+    await closeTable(table, playerId, await isRoundInProgress(table.id));
   });
 }
