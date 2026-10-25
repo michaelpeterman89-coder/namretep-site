@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { requirePlayer } from "@/lib/auth";
 import { getTableView, runTimeouts } from "@/server/blackjack";
-import { canViewTable, getTable, isId } from "@/server/tables";
+import { canViewTable, getBlackjackTable, getTable, isId } from "@/server/tables";
 import { BlackjackTable } from "./blackjack-table";
 
 export const metadata: Metadata = { title: "Blackjack · Namretep" };
@@ -26,6 +26,7 @@ async function TableContent({ params }: { params: Promise<{ tableId: string }> }
 
   const table = await getTable(tableId);
   if (!table || !(await canViewTable(table, player.id))) notFound();
+  if (table.game !== "blackjack") redirect(`/poker/${table.id}`);
 
   if (table.status === "closed") {
     return (
@@ -41,6 +42,6 @@ async function TableContent({ params }: { params: Promise<{ tableId: string }> }
 
   // Catch up on anything that timed out while nobody was watching.
   await runTimeouts(table);
-  const view = await getTableView((await getTable(tableId)) ?? table, player.id);
+  const view = await getTableView((await getBlackjackTable(tableId)) ?? table, player.id);
   return <BlackjackTable initialView={view} />;
 }

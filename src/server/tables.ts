@@ -1,5 +1,6 @@
 import "server-only";
 import { parseRules, type BlackjackRules, type SeatState } from "@/lib/games/blackjack";
+import { parsePokerRules, type PokerTableRules } from "@/lib/games/poker/table-rules";
 import type { AvatarId } from "@/lib/avatars";
 import { secureRandomInt } from "@/lib/random";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,24 +16,43 @@ export class GameError extends Error {
   }
 }
 
-export type GameTable = {
+type TableBase = {
   id: string;
   name: string;
   ownerId: string;
   visibility: "public" | "private";
   inviteCode: string | null;
   seats: number;
+  /** Blackjack: bet limits. Poker: big blind and maximum buy-in. */
   minBet: number;
   maxBet: number;
-  rules: BlackjackRules;
   status: "open" | "closed";
   bettingDeadline: Date | null;
 };
 
-export type SeatInfo = SeatState & { username: string; avatar: AvatarId };
+export type BlackjackTable = TableBase & { game: "blackjack"; rules: BlackjackRules };
+export type PokerTable = TableBase & { game: "holdem"; rules: PokerTableRules };
+/** Each game keeps its own rules; check `game` before using them. */
+export type GameTable = BlackjackTable | PokerTable;
+export type GameId = GameTable["game"];
+
+/** Bots don't have accounts; they're identified as "bot:<name>". */
+export const botId = (name: string) => `bot:${name}`;
+export const isBotId = (id: string) => id.startsWith("bot:");
+
+export type SeatInfo = SeatState & {
+  username: string;
+  avatar: AvatarId;
+  isBot: boolean;
+  /** Poker: chips in front of the seat (between hands). Null for blackjack. */
+  stack: number | null;
+  /** Poker: will cash out when the current hand ends. */
+  leaving: boolean;
+};
 
 type TableRow = {
   id: string;
+  game: GameId;
   name: string;
   owner_id: string;
   visibility: "public" | "private";
@@ -46,13 +66,31 @@ type TableRow = {
 };
 
 const TABLE_COLUMNS =
-  "id, name, owner_id, visibility, invite_code, seats, min_bet, max_bet, rules, status, betting_deadline_at";
+  "id, game, name, owner_id, visibility, invite_code, seats, min_bet, max_bet, rules, status, betting_deadline_at";
 export const MAX_BET_LIMIT = 1_000_000;
 
 function toTable(row: TableRow): GameTable {
+  const base: TableBase = {
+    id: row.id,
+    name: row.name,
+    ownerId: row.owner_id,
+    visibility: row.visibility,
+    inviteCode: row.invite_code,
+    seats: row.seats,
+    minBet: Number(row.min_bet),
+    maxBet: Number(row.max_bet),
+    status: row.status,
+    bettingDeadline: row.betting_deadline_at ? new Date(row.betting_deadline_at) : null,
+  };
+  if (row.game === "holdem") {
+    const poker = parsePokerRules(row.rules, row.seats);
+    if (!poker.ok) throw new Error(`Table ${row.id} has invalid poker rules: ${poker.error}`);
+    return { ...base, game: "holdem", rules: poker.rules };
+  }
   const parsed = parseRules(row.rules);
   if (!parsed.ok) throw new Error(`Table ${row.id} has invalid rules: ${parsed.error}`);
   return {
+    game: "blackjack",
     id: row.id,
     name: row.name,
     ownerId: row.owner_id,
@@ -70,7 +108,9 @@ function toTable(row: TableRow): GameTable {
 /** Turns database errors raised by our SQL functions into player-facing messages. */
 export function friendlyDbError(error: { code?: string; message: string }, duplicateMessage?: string): GameError {
   if (error.message.includes("INSUFFICIENT_CHIPS")) return new GameError("You don't have enough chips for that.");
-  if (error.message.includes("STALE_ROUND")) return new GameError("That hand already moved on. Refreshing…");
+  if (error.message.includes("STALE_ROUND") || error.message.includes("STALE_HAND")) {
+    return new GameError("That hand already moved on. Refreshing…");
+  }
   if (error.code === "23505") return new GameError(duplicateMessage ?? "That was already done.");
   console.error("Database error", error);
   return new GameError("Something went wrong. Please try again.");
@@ -151,6 +191,18 @@ export async function getTable(tableId: string): Promise<GameTable | null> {
   return data ? toTable(data) : null;
 }
 
+/** The table if it's a blackjack table, else null. */
+export async function getBlackjackTable(tableId: string): Promise<BlackjackTable | null> {
+  const table = await getTable(tableId);
+  return table?.game === "blackjack" ? table : null;
+}
+
+/** The table if it's a poker table, else null. */
+export async function getPokerTable(tableId: string): Promise<PokerTable | null> {
+  const table = await getTable(tableId);
+  return table?.game === "holdem" ? table : null;
+}
+
 /** Public tables, your own, ones you were invited to, and ones you sit at. */
 export async function canViewTable(table: GameTable, playerId: string): Promise<boolean> {
   if (table.visibility === "public" || table.ownerId === playerId) return true;
@@ -165,19 +217,23 @@ export async function canViewTable(table: GameTable, playerId: string): Promise<
 export async function getSeats(tableId: string): Promise<SeatInfo[]> {
   const { data, error } = await createAdminClient()
     .from("table_seats")
-    .select("seat_number, player_id, status, pending_bet, profiles(username, avatar)")
+    .select("seat_number, player_id, bot_name, status, pending_bet, stack, leaving, profiles(username, avatar)")
     .eq("table_id", tableId)
     .order("seat_number");
   if (error) throw friendlyDbError(error);
   return data.map((row) => {
-    const profile = row.profiles as unknown as { username: string; avatar: AvatarId };
+    const profile = row.profiles as unknown as { username: string; avatar: AvatarId } | null;
+    const bot = row.player_id === null;
     return {
       seatNumber: row.seat_number,
-      playerId: row.player_id,
+      playerId: bot ? botId(row.bot_name!) : row.player_id!,
       status: row.status as SeatState["status"],
       pendingBet: row.pending_bet === null ? null : Number(row.pending_bet),
-      username: profile.username,
-      avatar: profile.avatar,
+      username: bot ? row.bot_name! : profile!.username,
+      avatar: bot ? "verdant" : profile!.avatar,
+      isBot: bot,
+      stack: row.stack === null ? null : Number(row.stack),
+      leaving: row.leaving,
     };
   });
 }
@@ -248,6 +304,7 @@ export async function joinByInvite(code: string, playerId: string): Promise<stri
 }
 
 export async function sitDown(table: GameTable, playerId: string, seatNumber: number) {
+  if (table.game !== "blackjack") throw new GameError("Buy in to sit at a poker table.");
   if (table.status !== "open") throw new GameError("This table is closed.");
   if (!Number.isInteger(seatNumber) || seatNumber < 0 || seatNumber >= table.seats) throw new GameError("No such seat.");
   if (!(await canViewTable(table, playerId))) throw new GameError("Table not found.");
@@ -266,6 +323,7 @@ export async function sitDown(table: GameTable, playerId: string, seatNumber: nu
  * and any winnings are still paid.
  */
 export async function standUp(table: GameTable, playerId: string) {
+  if (table.game !== "blackjack") throw new GameError("Use Leave table to cash out of a poker table.");
   const { error } = await createAdminClient()
     .from("table_seats")
     .delete()
@@ -280,6 +338,14 @@ export async function closeTable(table: GameTable, playerId: string, roundInProg
   if (table.ownerId !== playerId) throw new GameError("Only the table's creator can close it.");
   if (roundInProgress) throw new GameError("Wait for the current hand to finish first.");
   const admin = createAdminClient();
+  if (table.game === "holdem") {
+    // Give every player their chips back before the seats go.
+    for (const seat of await getSeats(table.id)) {
+      if (seat.isBot) continue;
+      const { error } = await admin.rpc("poker_cash_out", { p_table_id: table.id, p_player_id: seat.playerId });
+      if (error) throw friendlyDbError(error);
+    }
+  }
   const { error } = await admin
     .from("game_tables")
     .update({ status: "closed", closed_at: new Date().toISOString(), last_activity_at: new Date().toISOString() })

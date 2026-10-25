@@ -17,11 +17,11 @@ import {
   closeTable,
   createBlackjackTable,
   GameError,
-  getTable,
+  getBlackjackTable,
   isId,
   sitDown,
   standUp,
-  type GameTable,
+  type BlackjackTable,
 } from "@/server/tables";
 
 // Server actions are public endpoints: never trust the arguments' types.
@@ -73,21 +73,21 @@ export type TableResult = {
  */
 async function run(
   tableId: unknown,
-  work: (table: GameTable, playerId: string) => Promise<RoundForPlayer | void>,
+  work: (table: BlackjackTable, playerId: string) => Promise<RoundForPlayer | void>,
 ): Promise<TableResult> {
   const player = await getCurrentPlayer();
   if (!player) return { ok: false, error: "You're not logged in. Please log in again.", view: null };
   if (!isId(tableId)) return { ok: false, error: "Table not found.", view: null };
-  const table = await getTable(tableId);
+  const table = await getBlackjackTable(tableId);
   if (!table || !(await canViewTable(table, player.id))) return { ok: false, error: "Table not found.", view: null };
 
   try {
     const result = await work(table, player.id);
-    const latest = (await getTable(tableId)) ?? table;
+    const latest = (await getBlackjackTable(tableId)) ?? table;
     return { ok: true, view: await getTableView(latest, player.id), feedback: result?.feedback ?? null };
   } catch (e) {
     if (!(e instanceof GameError)) throw e;
-    const latest = (await getTable(tableId)) ?? table;
+    const latest = (await getBlackjackTable(tableId)) ?? table;
     return { ok: false, error: e.message, view: await getTableView(latest, player.id) };
   }
 }

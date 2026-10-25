@@ -26,9 +26,9 @@ import {
   GameError,
   getPlayerChips,
   getSeats,
-  getTable,
+  getBlackjackTable,
   touchTable,
-  type GameTable,
+  type BlackjackTable,
   type SeatInfo,
 } from "./tables";
 
@@ -75,7 +75,7 @@ async function getLatestRound(tableId: string): Promise<StoredRound | null> {
   };
 }
 
-function forPlayer(table: GameTable, stored: StoredRound, playerId: string): RoundForPlayer {
+function forPlayer(table: BlackjackTable, stored: StoredRound, playerId: string): RoundForPlayer {
   const seat = stored.round.seats.findIndex((s) => s.playerId === playerId);
   return {
     roundId: stored.id,
@@ -95,7 +95,7 @@ const orNull = (value: string | null | undefined) => (value ?? null) as string;
 // ---------- Everything a viewer needs ----------
 
 export type TableView = {
-  table: Omit<GameTable, "bettingDeadline" | "inviteCode"> & {
+  table: Omit<BlackjackTable, "bettingDeadline" | "inviteCode"> & {
     bettingDeadline: string | null;
     /** Only shown to the owner and players at the table. */
     inviteCode: string | null;
@@ -107,7 +107,7 @@ export type TableView = {
   serverNow: string;
 };
 
-export async function getTableView(table: GameTable, playerId: string): Promise<TableView> {
+export async function getTableView(table: BlackjackTable, playerId: string): Promise<TableView> {
   const [seats, latest, chips] = await Promise.all([
     getSeats(table.id),
     getLatestRound(table.id),
@@ -136,7 +136,7 @@ export async function isRoundInProgress(tableId: string): Promise<boolean> {
 // ---------- Betting and dealing ----------
 
 /** Puts down (or changes) the player's bet for the next deal, then deals if everyone's in. */
-export async function placeBet(table: GameTable, playerId: string, bet: number) {
+export async function placeBet(table: BlackjackTable, playerId: string, bet: number) {
   if (table.status !== "open") throw new GameError("This table is closed.");
   if (!Number.isInteger(bet) || bet < table.minBet || bet > table.maxBet) {
     throw new GameError(
@@ -173,7 +173,7 @@ export async function placeBet(table: GameTable, playerId: string, bet: number) 
 
 /** Deals the next round if betting is done. Safe to call any time, from anyone. */
 async function dealIfReady(tableId: string) {
-  const table = await getTable(tableId);
+  const table = await getBlackjackTable(tableId);
   if (!table || table.status !== "open") return;
   const latest = await getLatestRound(table.id);
   if (latest && latest.round.phase !== "settled") return;
@@ -241,7 +241,7 @@ type Commit = {
   seats: SeatInfo[];
 };
 
-async function commit(table: GameTable, c: Commit): Promise<number> {
+async function commit(table: BlackjackTable, c: Commit): Promise<number> {
   const deadline = nextDeadline(table.rules, c.next, seatedSet(c.seats), new Date());
   const { data, error } = await createAdminClient().rpc("bj_act", {
     p_round_id: c.stored.id,
@@ -267,7 +267,7 @@ async function commit(table: GameTable, c: Commit): Promise<number> {
  * retry against the latest round instead (the engine still refuses repeats).
  */
 export async function takeAction(
-  table: GameTable,
+  table: BlackjackTable,
   playerId: string,
   roundId: string,
   version: number,
@@ -319,7 +319,7 @@ export async function takeAction(
  * out of time or left, and deals once betting closes. Anyone watching may
  * call this; it only acts when a deadline has really passed.
  */
-export async function runTimeouts(table: GameTable) {
+export async function runTimeouts(table: BlackjackTable) {
   for (let step = 0; step < 30; step++) {
     const [stored, seats] = await Promise.all([getLatestRound(table.id), getSeats(table.id)]);
     if (!stored || stored.round.phase === "settled") {
