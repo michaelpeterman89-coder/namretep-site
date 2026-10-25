@@ -138,5 +138,6 @@ Work in phases. Finish and test each one before starting the next.
 - Explain what you're changing before large edits, and keep commits small with clear messages.
 - Run `npm run build`, `npm run lint`, and tests before saying something is done.
 - Database changes go in Supabase migration files in the repo, never ad hoc.
+- This Supabase project does **not** grant table access automatically. Every new table's migration needs explicit `grant`s, including to `service_role`, or server code using the secret key gets "permission denied". After schema changes, run `npm run db:types`.
 - Ask before adding a new paid service or major dependency.
 - The owner is newer to coding: explain steps in plain language and say exactly what to click or run when something needs doing outside the code.
