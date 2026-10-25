@@ -39,6 +39,76 @@ export type Database = {
   }
   public: {
     Tables: {
+      blackjack_decisions: {
+        Row: {
+          action: string
+          book_action: string
+          created_at: string
+          hints_enabled: boolean
+          id: number
+          on_book: boolean
+          phase: string
+          player_id: string
+          round_id: string | null
+          rules_key: string
+          situation: string
+          situation_key: string
+          table_id: string | null
+        }
+        Insert: {
+          action: string
+          book_action: string
+          created_at?: string
+          hints_enabled?: boolean
+          id?: never
+          on_book: boolean
+          phase: string
+          player_id: string
+          round_id?: string | null
+          rules_key: string
+          situation: string
+          situation_key: string
+          table_id?: string | null
+        }
+        Update: {
+          action?: string
+          book_action?: string
+          created_at?: string
+          hints_enabled?: boolean
+          id?: never
+          on_book?: boolean
+          phase?: string
+          player_id?: string
+          round_id?: string | null
+          rules_key?: string
+          situation?: string
+          situation_key?: string
+          table_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blackjack_decisions_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blackjack_decisions_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "blackjack_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blackjack_decisions_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "game_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blackjack_round_secrets: {
         Row: {
           round_id: string
@@ -217,6 +287,59 @@ export type Database = {
           },
         ]
       }
+      player_game_stats: {
+        Row: {
+          biggest_loss: number
+          biggest_win: number
+          counters: Json
+          game: string
+          losses: number
+          net_chips: number
+          player_id: string
+          pushes: number
+          rounds: number
+          rules_key: string
+          updated_at: string
+          wins: number
+        }
+        Insert: {
+          biggest_loss?: number
+          biggest_win?: number
+          counters?: Json
+          game: string
+          losses?: number
+          net_chips?: number
+          player_id: string
+          pushes?: number
+          rounds?: number
+          rules_key: string
+          updated_at?: string
+          wins?: number
+        }
+        Update: {
+          biggest_loss?: number
+          biggest_win?: number
+          counters?: Json
+          game?: string
+          losses?: number
+          net_chips?: number
+          player_id?: string
+          pushes?: number
+          rounds?: number
+          rules_key?: string
+          updated_at?: string
+          wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_game_stats_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar: string
@@ -277,7 +400,54 @@ export type Database = {
         }
         Returns: number
       }
+      blackjack_apply_action: {
+        Args: {
+          p_chips: Json
+          p_decisions: Json
+          p_phase: string
+          p_public: Json
+          p_round_id: string
+          p_secret: Json
+          p_stats: Json
+          p_version: number
+        }
+        Returns: number
+      }
+      blackjack_start_round: {
+        Args: {
+          p_chips: Json
+          p_phase: string
+          p_public: Json
+          p_secret: Json
+          p_stats: Json
+          p_table_id: string
+        }
+        Returns: {
+          round_id: string
+          round_number: number
+        }[]
+      }
       claim_daily_refill: { Args: never; Returns: number }
+      jsonb_add_counters: { Args: { a: Json; b: Json }; Returns: Json }
+      my_book_summary: {
+        Args: { p_rules_key?: string }
+        Returns: {
+          decisions: number
+          hinted_decisions: number
+          on_book: number
+        }[]
+      }
+      my_missed_situations: {
+        Args: { p_limit?: number; p_rules_key?: string }
+        Returns: {
+          book_action: string
+          misses: number
+          situation: string
+          situation_key: string
+          total: number
+        }[]
+      }
+      record_game_stats: { Args: { p_stats: Json }; Returns: undefined }
       username_available: { Args: { name: string }; Returns: boolean }
     }
     Enums: {
