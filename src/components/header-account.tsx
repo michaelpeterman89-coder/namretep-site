@@ -26,6 +26,11 @@ export async function HeaderAccount() {
       <Link href="/blackjack" className="font-display text-[0.65rem] text-neon-cyan hover:text-starlight">
         Tables
       </Link>
+      {player.isAdmin && (
+        <Link href="/admin" className="font-display text-[0.65rem] text-neon-gold hover:text-starlight">
+          Admin
+        </Link>
+      )}
       <Link
         href="/profile"
         className="flex items-center gap-2 rounded-md px-1 hover:bg-space-800"

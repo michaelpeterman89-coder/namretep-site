@@ -30,6 +30,15 @@ Secrets live in `.env.local` (never committed) and in Vercel Environment Variabl
 
 ---
 
+## Admin
+
+- Admins (`profiles.is_admin`) get an **Admin** link in the header and the pages under `/admin`: site overview, players (search, give/take chips, rename, make/remove admin, suspend/restore), open tables (close any table between hands), and an admin log. Everyone else gets a 404 there.
+- Every admin change goes through a SQL function that re-checks the caller is an admin and writes a row to `admin_actions` (the admin log). Chip changes also go in `chip_ledger` as `admin_adjust`.
+- Suspending sets `profiles.suspended_at` (locks the account out of every page at once), bans the login in Supabase Auth, and takes them off their tables. Admins can't remove their own admin access or suspend themselves.
+- Admins can make other admins from the site. If nobody is left with admin access, it has to be granted again with a migration (`update public.profiles set is_admin = true where id = '…'`).
+
+---
+
 ## Core rules for how the game code works
 
 1. **The server is the dealer.** Card shuffling, the shoe, dealing, and payouts happen only on the server (Next.js route handlers / server actions or Supabase database functions). The browser never receives undealt cards or the dealer's hole card before it's revealed.
