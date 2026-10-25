@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-const games = [
-  { name: "Blackjack", status: "Coming first", accent: "text-neon-cyan" },
+const games: { name: string; status: string; accent: string; href?: string }[] = [
+  { name: "Blackjack", status: "Play now", accent: "text-neon-cyan", href: "/blackjack" },
   { name: "Roulette", status: "Later", accent: "text-starlight/50" },
   { name: "Craps", status: "Later", accent: "text-starlight/50" },
   { name: "Baccarat", status: "Later", accent: "text-starlight/50" },
@@ -51,12 +51,21 @@ export default function Home() {
         </h2>
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {games.map((game) => (
-            <li
-              key={game.name}
-              className="flex items-center justify-between rounded-md border-2 border-space-700 bg-space-950/60 px-4 py-3"
-            >
-              <span className="font-semibold">{game.name}</span>
-              <span className={`font-display text-[0.6rem] ${game.accent}`}>{game.status}</span>
+            <li key={game.name}>
+              {game.href ? (
+                <Link
+                  href={game.href}
+                  className="flex items-center justify-between rounded-md border-2 border-neon-cyan bg-space-950/60 px-4 py-3 hover:bg-neon-cyan/10"
+                >
+                  <span className="font-semibold">{game.name}</span>
+                  <span className={`font-display text-[0.6rem] ${game.accent}`}>{game.status} →</span>
+                </Link>
+              ) : (
+                <div className="flex items-center justify-between rounded-md border-2 border-space-700 bg-space-950/60 px-4 py-3">
+                  <span className="font-semibold">{game.name}</span>
+                  <span className={`font-display text-[0.6rem] ${game.accent}`}>{game.status}</span>
+                </div>
+              )}
             </li>
           ))}
         </ul>

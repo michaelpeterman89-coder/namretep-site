@@ -10,7 +10,7 @@ export async function HeaderAccount() {
 
   if (!player) {
     return (
-      <nav className="flex items-center gap-3">
+      <nav className="flex items-center gap-2 sm:gap-3">
         <Link href="/login" className="font-display text-xs text-starlight hover:text-neon-cyan">
           Log in
         </Link>
@@ -22,7 +22,10 @@ export async function HeaderAccount() {
   }
 
   return (
-    <nav className="flex items-center gap-3">
+    <nav className="flex items-center gap-2 sm:gap-3">
+      <Link href="/blackjack" className="font-display text-[0.65rem] text-neon-cyan hover:text-starlight">
+        Tables
+      </Link>
       <Link
         href="/profile"
         className="flex items-center gap-2 rounded-md px-1 hover:bg-space-800"
@@ -32,7 +35,8 @@ export async function HeaderAccount() {
         <span className="hidden max-w-32 truncate sm:inline">{player.username}</span>
         <span className="font-display text-xs text-neon-gold">{formatChips(player.chips)}</span>
       </Link>
-      <form action={logOut}>
+      {/* On phones, log out lives on the profile page to keep the header narrow. */}
+      <form action={logOut} className="hidden sm:block">
         <button type="submit" className="font-display text-[0.65rem] text-starlight/70 hover:text-neon-magenta">
           Log out
         </button>

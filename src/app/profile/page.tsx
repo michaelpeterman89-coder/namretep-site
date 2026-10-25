@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { logOut } from "@/app/(auth)/actions";
 import { Avatar } from "@/components/avatar";
 import { LocalTime } from "@/components/local-time";
 import { requirePlayer } from "@/lib/auth";
@@ -52,7 +53,13 @@ async function ProfileContent() {
         <EditProfileForm username={player.username} avatar={player.avatar} />
       </section>
 
-      <p className="text-center text-sm text-starlight/60">Per-game stats arrive with Blackjack.</p>
+      <p className="text-center text-sm text-starlight/60">Per-game stats are coming soon.</p>
+
+      <form action={logOut} className="flex justify-center">
+        <button type="submit" className="pixel-btn bg-space-800 text-starlight">
+          Log out
+        </button>
+      </form>
     </>
   );
 }

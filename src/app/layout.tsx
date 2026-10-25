@@ -37,7 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
           <Link
             href="/"
-            className="font-display text-base text-neon-gold drop-shadow-[3px_3px_0_var(--color-ink)] sm:text-xl"
+            className="font-display text-sm text-neon-gold drop-shadow-[3px_3px_0_var(--color-ink)] sm:text-xl"
           >
             NAMRETEP
           </Link>
