@@ -22,6 +22,21 @@ export const secureRandomInt: RandomInt = (maxExclusive) => {
   return value % maxExclusive;
 };
 
+/**
+ * A repeatable (NOT secure) random number generator, for tests and bot
+ * personalities. Never use it for shuffling real decks.
+ */
+export function seededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 2 ** 32;
+  };
+}
+
 /** Fisher–Yates shuffle. Returns a new array; the input is not changed. */
 export function shuffle<T>(items: readonly T[], randomInt: RandomInt = secureRandomInt): T[] {
   const result = [...items];

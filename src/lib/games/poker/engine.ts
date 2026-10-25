@@ -99,7 +99,7 @@ function highestCommitted(hand: PokerHand): number {
   return Math.max(0, ...hand.seats.filter((s) => !s.folded).map((s) => s.committed));
 }
 
-function canStillBet(s: PokerSeat) {
+function canStillBet(s: Pick<PokerSeat, "folded" | "allIn">) {
   return !s.folded && !s.allIn;
 }
 
@@ -225,8 +225,13 @@ export type ActionOptions = {
   raise: { min: number; max: number } | null;
 };
 
+/** The betting fields actionOptions needs; both a full hand and a player's view have them. */
+export type BettingState = Pick<PokerHand, "phase" | "toAct" | "currentBet" | "minRaise" | "fullRaiseLevel"> & {
+  seats: readonly Pick<PokerSeat, "stack" | "committed" | "folded" | "allIn" | "acted" | "actedAtLevel">[];
+};
+
 /** What the seat may do right now, or null if it isn't their turn. */
-export function actionOptions(hand: PokerHand, seat: number): ActionOptions | null {
+export function actionOptions(hand: BettingState, seat: number): ActionOptions | null {
   if (hand.phase !== "betting" || hand.toAct !== seat) return null;
   const s = hand.seats[seat];
   const toCall = Math.max(0, hand.currentBet - s.committed);
