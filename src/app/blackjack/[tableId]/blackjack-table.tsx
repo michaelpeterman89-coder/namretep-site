@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/avatar";
 import { Burst } from "@/components/burst";
+import { cardLabel } from "@/components/playing-card";
 import { TickingNumber } from "@/components/ticking-number";
 import { formatChips } from "@/lib/chips";
 import { handValue, isTwoCard21, type Card } from "@/lib/games/blackjack/cards";
@@ -53,6 +54,21 @@ const ACTION_LABELS: Record<ActionType, string> = {
   insurance: "Insurance",
   decline: "No thanks",
 };
+
+/** Keyboard shortcuts at the table. */
+const ACTION_KEYS: Record<ActionType, string> = {
+  hit: "H",
+  stand: "S",
+  double: "D",
+  split: "P",
+  surrender: "R",
+  insurance: "I",
+  decline: "N",
+};
+const KEY_ACTIONS = Object.fromEntries(Object.entries(ACTION_KEYS).map(([a, k]) => [k.toLowerCase(), a])) as Record<
+  string,
+  ActionType
+>;
 
 const ACTION_STYLES: Partial<Record<ActionType, string>> = {
   hit: "bg-neon-cyan text-ink",
@@ -389,6 +405,53 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
     if (yourTurn && left !== null && left > 0 && left <= 5) playSound("tick");
   }, [yourTurn, left]);
 
+  // ---------- Keyboard ----------
+
+  const bettingOpen = Boolean(mySeat && !roundActive && !paying);
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable) return;
+      if (e.key === "Enter" && bettingOpen && (tag === "BODY" || tag === "MAIN")) {
+        e.preventDefault();
+        placeBet();
+        return;
+      }
+      const type = KEY_ACTIONS[e.key.toLowerCase()];
+      if (!type || !round || busy || pending || !round.actions.includes(type) || actionCost(type) > me.chips) return;
+      e.preventDefault();
+      act(type);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  // ---------- What a screen reader hears ----------
+
+  const srSummary = (() => {
+    if (!displayRound) return mySeat ? (bettingOpen ? "Place your bet." : "") : "You're watching this table.";
+    if (busy) return "Dealing.";
+    const parts: string[] = [];
+    myRoundSeat?.hands.forEach((h, i) => {
+      const name = myRoundSeat.hands.length > 1 ? `Hand ${i + 1}` : "Your hand";
+      parts.push(`${name}: ${h.cards.map(cardLabel).join(", ")}, ${totalLabel(h.cards, h.fromSplit)}.`);
+    });
+    const dealer = displayRound.view.dealer;
+    parts.push(
+      displayRound.view.dealerHidden > 0
+        ? `Dealer shows ${cardLabel(dealer[0])}.`
+        : `Dealer has ${dealer.map(cardLabel).join(", ")}, ${totalLabel(dealer)}.`,
+    );
+    if (yourTurn) parts.push(`Your move: ${round!.actions.map((a) => ACTION_LABELS[a]).join(", ")}.`);
+    if (yourTurn && left !== null && left <= 5) parts.push("Time is almost up.");
+    if (resultsShown && myNet !== null && settlement && settlement.payAt.size > 0) {
+      parts.push(myNet > 0 ? `You won ${formatChips(myNet)}.` : myNet < 0 ? `You lost ${formatChips(-myNet)}.` : "Push.");
+    }
+    return parts.join(" ");
+  })();
+
   // A blackjack, or winning at least 10x the table minimum, shakes the table.
   const bigWin = Boolean(
     settlement &&
@@ -459,7 +522,7 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
         <DiscardTray />
         <div className="flex flex-col items-center gap-2">
           <ChipTray />
-          <span className="font-display text-[0.6rem] text-starlight/60">Dealer</span>
+          <span className="font-display text-[0.6rem] text-starlight/70">Dealer</span>
           <div className="card-fan flex min-h-20 sm:min-h-28">
             {displayRound &&
               Array.from({ length: displayRound.view.dealer.length + displayRound.view.dealerHidden }, (_, i) => (
@@ -514,7 +577,10 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
       </DealContext>
 
       {/* Messages */}
-      <div aria-live="polite" className="flex min-h-6 flex-col items-center gap-1 text-center">
+      <p className="sr-only" aria-live="polite" aria-atomic="true">
+        {srSummary}
+      </p>
+      <div className="flex min-h-6 flex-col items-center gap-1 text-center">
         {round?.view.reshuffled && roundActive && <p className="text-sm text-neon-cyan">The shoe was shuffled.</p>}
         {status && !busy && !cleared && <p className="text-sm text-starlight/80">{status}</p>}
         {myRoundSeat && myRoundSeat.insurance > 0 && (
@@ -561,10 +627,14 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
                       type="button"
                       disabled={pending || busy || cost > me.chips}
                       onClick={() => act(type)}
+                      aria-keyshortcuts={ACTION_KEYS[type]}
                       className={`pixel-btn disabled:opacity-50 ${ACTION_STYLES[type] ?? "bg-space-800 text-starlight"}`}
                     >
                       {label}
                       {cost > 0 && <span className="ml-2 opacity-70">({formatChips(cost)})</span>}
+                      <kbd className="kbd" aria-hidden>
+                        {ACTION_KEYS[type]}
+                      </kbd>
                     </button>
                   );
                 })}
@@ -628,6 +698,12 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
                   max={table.maxBet}
                   value={bet}
                   onChange={(e) => setBet(Math.floor(Number(e.target.value) || 0))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      placeBet();
+                    }
+                  }}
                   className="pixel-input w-32"
                 />
               </label>
@@ -638,6 +714,9 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
                 className="pixel-btn bg-neon-magenta text-ink disabled:opacity-60"
               >
                 {pending ? "…" : othersActive === 0 ? "Deal" : mySeat.pendingBet !== null ? "Change bet" : "Place bet"}
+                <kbd className="kbd" aria-hidden>
+                  Enter
+                </kbd>
               </button>
             </div>
           </>
@@ -653,7 +732,7 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
           Show a hint after a mistake
         </label>
         {hints && (
-          <p className="-mt-2 text-center text-xs text-starlight/60">
+          <p className="-mt-2 text-center text-xs text-starlight/70">
             Decisions made with hints on don&apos;t count toward your On Book %.
           </p>
         )}
@@ -731,16 +810,21 @@ function SeatSpot({
   if (!occupant) {
     return (
       <div
-        className="seat-arc flex min-h-24 w-36 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-space-700 p-3"
+        className="seat-arc flex min-h-20 w-[6.5rem] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-space-700 p-2 sm:min-h-24 sm:w-36 sm:p-3"
         style={arcStyle}
       >
-        <span className="font-display text-[0.55rem] text-starlight/50">Seat {seatNumber + 1}</span>
+        <span className="font-display text-[0.55rem] text-starlight/70">Seat {seatNumber + 1}</span>
         {canSit ? (
-          <button type="button" onClick={onSit} className="pixel-btn bg-neon-cyan text-ink">
+          <button
+            type="button"
+            onClick={onSit}
+            aria-label={`Sit in seat ${seatNumber + 1}`}
+            className="pixel-btn bg-neon-cyan text-ink"
+          >
             Sit here
           </button>
         ) : (
-          <span className="text-xs text-starlight/40">Empty</span>
+          <span className="text-xs text-starlight/70">Empty</span>
         )}
       </div>
     );
@@ -813,9 +897,9 @@ function SeatSpot({
       ) : (
         <>
           <span className="bet-spot">
-            <span className="font-display text-[0.5rem] text-neon-gold/40">BET</span>
+            <span className="font-display text-[0.5rem] text-neon-gold/70">BET</span>
           </span>
-          <span className="text-xs text-starlight/50">{occupant.status === "sitting_out" ? "Sitting out" : "No bet yet"}</span>
+          <span className="text-xs text-starlight/70">{occupant.status === "sitting_out" ? "Sitting out" : "No bet yet"}</span>
         </>
       )}
     </div>
