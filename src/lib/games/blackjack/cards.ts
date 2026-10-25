@@ -1,16 +1,8 @@
+import { buildDecks, rankOf, type Card } from "@/lib/games/deck";
 import { secureRandomInt, shuffle, type RandomInt } from "@/lib/random";
 
-export const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K"] as const;
-export const SUITS = ["s", "h", "d", "c"] as const;
-
-export type Rank = (typeof RANKS)[number];
-export type Suit = (typeof SUITS)[number];
-/** A card as a short code: rank then suit, e.g. "Ah" (ace of hearts), "Td" (ten of diamonds). */
-export type Card = `${Rank}${Suit}`;
-
-export function rankOf(card: Card): Rank {
-  return card[0] as Rank;
-}
+// Card basics live in the shared deck module; re-exported for blackjack code.
+export { buildDecks, RANKS, rankOf, SUITS, type Card, type Rank, type Suit } from "@/lib/games/deck";
 
 /** Blackjack value counting aces as 1. */
 export function cardValue(card: Card): number {
@@ -54,16 +46,6 @@ export type Shoe = {
   /** Number of cards in a full shoe, used to find the shuffle point. */
   size: number;
 };
-
-export function buildDecks(decks: number): Card[] {
-  const cards: Card[] = [];
-  for (let d = 0; d < decks; d++) {
-    for (const suit of SUITS) {
-      for (const rank of RANKS) cards.push(`${rank}${suit}`);
-    }
-  }
-  return cards;
-}
 
 export function newShoe(decks: number, randomInt: RandomInt = secureRandomInt): Shoe {
   return { cards: shuffle(buildDecks(decks), randomInt), size: decks * 52 };
