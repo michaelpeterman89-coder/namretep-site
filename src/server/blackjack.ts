@@ -2,199 +2,63 @@ import "server-only";
 import {
   actionChanges,
   applyAction,
+  automaticAction,
   betChanges,
+  BETTING_SECONDS,
   IllegalActionError,
   judgeDecision,
   legalActions,
-  parseRules,
+  nextDeadline,
   payoutChanges,
   publicView,
   roundStats,
+  seatsToDeal,
   startRound,
   type ActionType,
+  type BlackjackAction,
   type BlackjackRound,
-  type BlackjackRules,
   type ChipChange,
   type PublicRound,
 } from "@/lib/games/blackjack";
-import { secureRandomInt } from "@/lib/random";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  friendlyDbError,
+  GameError,
+  getPlayerChips,
+  getSeats,
+  getTable,
+  touchTable,
+  type GameTable,
+  type SeatInfo,
+} from "./tables";
 
-// All game writes go through here, using the secret-key client. Every
-// function checks the player is allowed to act before touching the database.
+// Blackjack rounds at a table: betting, dealing, player actions, and
+// timeouts. The engine decides what's legal; this file checks who's asking
+// and saves each change together with its chips, stats, and decisions.
 
-/** An error whose message is safe and helpful to show the player. */
-export class GameError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "GameError";
-  }
-}
+export { GameError } from "./tables";
 
-export type GameTable = {
-  id: string;
-  name: string;
-  ownerId: string;
-  visibility: "public" | "private";
-  inviteCode: string | null;
-  seats: number;
-  minBet: number;
-  maxBet: number;
-  rules: BlackjackRules;
-  status: "open" | "closed";
-};
-
-/** What the browser gets: the public view plus what this player may do now. */
+/** The round as one player may see it, plus what they can do right now. */
 export type RoundForPlayer = {
   roundId: string;
   version: number;
   view: PublicRound;
+  /** This player's seat within the round, or -1 if they weren't dealt in. */
   seat: number;
   actions: ActionType[];
+  /** When the current decision times out (ISO), or null for no timer. */
+  deadline: string | null;
   /** How the player's last action compared with basic strategy (null if there was no real choice). */
   feedback?: { onBook: boolean; bookAction: ActionType; situation: string } | null;
 };
 
-type TableRow = {
-  id: string;
-  name: string;
-  owner_id: string;
-  visibility: "public" | "private";
-  invite_code: string | null;
-  seats: number;
-  min_bet: number;
-  max_bet: number;
-  rules: unknown;
-  status: "open" | "closed";
-};
-
-const TABLE_COLUMNS = "id, name, owner_id, visibility, invite_code, seats, min_bet, max_bet, rules, status";
-export const MAX_BET_LIMIT = 1_000_000;
-
-function toTable(row: TableRow): GameTable {
-  const parsed = parseRules(row.rules);
-  if (!parsed.ok) throw new Error(`Table ${row.id} has invalid rules: ${parsed.error}`);
-  return {
-    id: row.id,
-    name: row.name,
-    ownerId: row.owner_id,
-    visibility: row.visibility,
-    inviteCode: row.invite_code,
-    seats: row.seats,
-    minBet: Number(row.min_bet),
-    maxBet: Number(row.max_bet),
-    rules: parsed.rules,
-    status: row.status,
-  };
-}
-
-/** Turns database errors raised by our SQL functions into player-facing messages. */
-function friendlyDbError(error: { code?: string; message: string }): GameError {
-  if (error.message.includes("INSUFFICIENT_CHIPS")) return new GameError("You don't have enough chips for that.");
-  if (error.message.includes("STALE_ROUND")) return new GameError("That hand already moved on. Refreshing…");
-  if (error.code === "23505") return new GameError("A round is already in progress at this table.");
-  console.error("Blackjack database error", error);
-  return new GameError("Something went wrong. Please try again.");
-}
-
-// ---------- Tables ----------
-
-export type NewTableInput = {
-  name: string;
-  visibility: "public" | "private";
-  seats: number;
-  minBet: number;
-  maxBet: number;
-  rules: unknown;
-};
-
-const INVITE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O or 1/I mix-ups
-
-function newInviteCode(): string {
-  return Array.from({ length: 8 }, () => INVITE_ALPHABET[secureRandomInt(INVITE_ALPHABET.length)]).join("");
-}
-
-export async function createBlackjackTable(ownerId: string, input: NewTableInput): Promise<string> {
-  const name = input.name.trim();
-  if (name.length < 1 || name.length > 40) throw new GameError("Table name must be 1–40 characters.");
-  if (input.visibility !== "public" && input.visibility !== "private") throw new GameError("Choose public or private.");
-  if (!Number.isInteger(input.seats) || input.seats < 1 || input.seats > 7) throw new GameError("Seats must be 1–7.");
-  if (!Number.isInteger(input.minBet) || input.minBet < 1) throw new GameError("Minimum bet must be at least 1.");
-  if (!Number.isInteger(input.maxBet) || input.maxBet < input.minBet || input.maxBet > MAX_BET_LIMIT) {
-    throw new GameError(`Maximum bet must be between the minimum and ${MAX_BET_LIMIT.toLocaleString("en-US")}.`);
-  }
-  const rules = parseRules(input.rules);
-  if (!rules.ok) throw new GameError(rules.error);
-
-  const { data, error } = await createAdminClient()
-    .from("game_tables")
-    .insert({
-      game: "blackjack",
-      name,
-      owner_id: ownerId,
-      visibility: input.visibility,
-      invite_code: input.visibility === "private" ? newInviteCode() : null,
-      seats: input.seats,
-      min_bet: input.minBet,
-      max_bet: input.maxBet,
-      rules: rules.rules,
-    })
-    .select("id")
-    .single();
-  if (error || !data) throw friendlyDbError(error ?? { message: "No table returned" });
-  return data.id as string;
-}
-
-export async function getTable(tableId: string): Promise<GameTable | null> {
-  const { data, error } = await createAdminClient()
-    .from("game_tables")
-    .select(TABLE_COLUMNS)
-    .eq("id", tableId)
-    .maybeSingle<TableRow>();
-  if (error) throw friendlyDbError(error);
-  return data ? toTable(data) : null;
-}
-
-export async function listTablesForOwner(ownerId: string): Promise<GameTable[]> {
-  const { data, error } = await createAdminClient()
-    .from("game_tables")
-    .select(TABLE_COLUMNS)
-    .eq("owner_id", ownerId)
-    .eq("status", "open")
-    .order("last_activity_at", { ascending: false });
-  if (error) throw friendlyDbError(error);
-  return (data as TableRow[]).map(toTable);
-}
-
-/** A player's current balance, read fresh from the database. */
-export async function getPlayerChips(playerId: string): Promise<number> {
-  const { data, error } = await createAdminClient().from("profiles").select("chips").eq("id", playerId).single();
-  if (error) throw friendlyDbError(error);
-  return Number(data.chips);
-}
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** True for strings shaped like a table/round id, so junk never reaches the database. */
-export function isId(value: unknown): value is string {
-  return typeof value === "string" && UUID_PATTERN.test(value);
-}
-
-/** Phase 3 is solo play: only the table's owner can play at it. */
-function assertCanPlay(table: GameTable, playerId: string) {
-  if (table.ownerId !== playerId) throw new GameError("Only this table's owner can play here (for now).");
-  if (table.status !== "open") throw new GameError("This table is closed.");
-}
-
-// ---------- Rounds ----------
-
-type StoredRound = { id: string; version: number; round: BlackjackRound };
+type StoredRound = { id: string; version: number; round: BlackjackRound; deadline: Date | null };
 
 /** The table's most recent round, active or finished, including its secret state. */
 async function getLatestRound(tableId: string): Promise<StoredRound | null> {
   const { data, error } = await createAdminClient()
     .from("blackjack_rounds")
-    .select("id, version, blackjack_round_secrets(state)")
+    .select("id, version, deadline_at, blackjack_round_secrets(state)")
     .eq("table_id", tableId)
     .order("round_number", { ascending: false })
     .limit(1)
@@ -203,7 +67,12 @@ async function getLatestRound(tableId: string): Promise<StoredRound | null> {
   if (!data) return null;
   const secrets = data.blackjack_round_secrets as unknown as { state: BlackjackRound } | null;
   if (!secrets) throw new Error(`Round ${data.id} is missing its state`);
-  return { id: data.id as string, version: data.version as number, round: secrets.state };
+  return {
+    id: data.id,
+    version: data.version,
+    round: secrets.state,
+    deadline: data.deadline_at ? new Date(data.deadline_at) : null,
+  };
 }
 
 function forPlayer(table: GameTable, stored: StoredRound, playerId: string): RoundForPlayer {
@@ -214,48 +83,188 @@ function forPlayer(table: GameTable, stored: StoredRound, playerId: string): Rou
     view: publicView(stored.round),
     seat,
     actions: seat >= 0 ? legalActions(table.rules, stored.round, seat) : [],
+    deadline: stored.deadline?.toISOString() ?? null,
   };
 }
 
-/** The latest round at a table, as this player may see it. */
-export async function getRoundForPlayer(table: GameTable, playerId: string): Promise<RoundForPlayer | null> {
-  const stored = await getLatestRound(table.id);
-  return stored ? forPlayer(table, stored, playerId) : null;
+const seatedSet = (seats: SeatInfo[]) => new Set(seats.map((s) => s.playerId));
+
+/** Generated types mark every SQL argument as required, but these ones accept null. */
+const orNull = (value: string | null | undefined) => (value ?? null) as string;
+
+// ---------- Everything a viewer needs ----------
+
+export type TableView = {
+  table: Omit<GameTable, "bettingDeadline" | "inviteCode"> & {
+    bettingDeadline: string | null;
+    /** Only shown to the owner and players at the table. */
+    inviteCode: string | null;
+  };
+  seats: SeatInfo[];
+  round: RoundForPlayer | null;
+  me: { playerId: string; seatNumber: number | null; chips: number; isOwner: boolean };
+  /** Server clock, so the browser can correct its countdowns. */
+  serverNow: string;
+};
+
+export async function getTableView(table: GameTable, playerId: string): Promise<TableView> {
+  const [seats, latest, chips] = await Promise.all([
+    getSeats(table.id),
+    getLatestRound(table.id),
+    getPlayerChips(playerId),
+  ]);
+  const mySeat = seats.find((s) => s.playerId === playerId);
+  const insider = table.ownerId === playerId || Boolean(mySeat);
+  return {
+    table: {
+      ...table,
+      inviteCode: insider ? table.inviteCode : null,
+      bettingDeadline: table.bettingDeadline?.toISOString() ?? null,
+    },
+    seats,
+    round: latest ? forPlayer(table, latest, playerId) : null,
+    me: { playerId, seatNumber: mySeat?.seatNumber ?? null, chips, isOwner: table.ownerId === playerId },
+    serverNow: new Date().toISOString(),
+  };
 }
 
-/** Takes the bet, deals a new round, and saves both together. */
-export async function dealRound(table: GameTable, playerId: string, bet: number): Promise<RoundForPlayer> {
-  assertCanPlay(table, playerId);
+export async function isRoundInProgress(tableId: string): Promise<boolean> {
+  const latest = await getLatestRound(tableId);
+  return Boolean(latest && latest.round.phase !== "settled");
+}
+
+// ---------- Betting and dealing ----------
+
+/** Puts down (or changes) the player's bet for the next deal, then deals if everyone's in. */
+export async function placeBet(table: GameTable, playerId: string, bet: number) {
+  if (table.status !== "open") throw new GameError("This table is closed.");
   if (!Number.isInteger(bet) || bet < table.minBet || bet > table.maxBet) {
     throw new GameError(
       `Bet must be between ${table.minBet.toLocaleString("en-US")} and ${table.maxBet.toLocaleString("en-US")}.`,
     );
   }
+  if (await isRoundInProgress(table.id)) throw new GameError("Wait for the current hand to finish.");
+  if ((await getPlayerChips(playerId)) < bet) throw new GameError("You don't have enough chips for that bet.");
 
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("table_seats")
+    // Betting brings a player back from sitting out. Their missed-turn count
+    // only resets when they actually make a move.
+    .update({ pending_bet: bet, bet_placed_at: new Date().toISOString(), status: "active" })
+    .eq("table_id", table.id)
+    .eq("player_id", playerId)
+    .select("seat_number");
+  if (error) throw friendlyDbError(error);
+  if (!data || data.length === 0) throw new GameError("Take a seat before betting.");
+
+  // With others at the table, the first bet starts the betting clock.
+  const seats = await getSeats(table.id);
+  if (seats.filter((s) => s.status === "active").length > 1 && !table.bettingDeadline) {
+    await admin
+      .from("game_tables")
+      .update({ betting_deadline_at: new Date(Date.now() + BETTING_SECONDS * 1000).toISOString() })
+      .eq("id", table.id)
+      .is("betting_deadline_at", null);
+  }
+  await touchTable(table.id);
+  await dealIfReady(table.id);
+}
+
+/** Deals the next round if betting is done. Safe to call any time, from anyone. */
+async function dealIfReady(tableId: string) {
+  const table = await getTable(tableId);
+  if (!table || table.status !== "open") return;
   const latest = await getLatestRound(table.id);
-  if (latest && latest.round.phase !== "settled") throw new GameError("Finish the current hand first.");
+  if (latest && latest.round.phase !== "settled") return;
 
-  const round = startRound(table.rules, latest?.round.shoe ?? null, [{ playerId, bet }]);
-  const chips: ChipChange[] = [...betChanges(round), ...payoutChanges(round)];
+  const seats = await getSeats(table.id);
+  const toDeal = seatsToDeal(seats, table.bettingDeadline, new Date());
+  if (!toDeal) return;
 
-  const { data, error } = await createAdminClient()
-    .rpc("blackjack_start_round", {
-      p_table_id: table.id,
-      p_phase: round.phase,
-      p_public: publicView(round),
-      p_secret: round,
-      p_chips: chips,
-      p_stats: roundStats(table.rules, round),
-    })
-    .single<{ round_id: string; round_number: number }>();
-  if (error || !data) throw friendlyDbError(error ?? { message: "No round returned" });
+  // Anyone who can no longer cover their bet is skipped (their bet is cleared).
+  const chips = await Promise.all(toDeal.map((s) => getPlayerChips(s.playerId)));
+  const dealt = toDeal.filter((s, i) => chips[i] >= (s.pendingBet ?? 0));
+  if (dealt.length === 0) {
+    await createAdminClient()
+      .from("table_seats")
+      .update({ pending_bet: null, bet_placed_at: null })
+      .eq("table_id", table.id);
+    return;
+  }
 
-  return forPlayer(table, { id: data.round_id, version: 1, round }, playerId);
+  const round = startRound(
+    table.rules,
+    latest?.round.shoe ?? null,
+    dealt.map((s) => ({ playerId: s.playerId, bet: s.pendingBet! })),
+  );
+  const chipChanges: ChipChange[] = [...betChanges(round), ...payoutChanges(round)];
+  const deadline = nextDeadline(table.rules, round, seatedSet(seats), new Date());
+
+  const { error } = await createAdminClient().rpc("bj_deal", {
+    p_table_id: table.id,
+    p_phase: round.phase,
+    p_public: publicView(round),
+    p_secret: round,
+    p_chips: chipChanges,
+    p_stats: roundStats(table.rules, round),
+    p_players: toDeal.map((s) => s.playerId),
+    p_deadline: orNull(deadline?.toISOString()),
+  });
+  // 23505: someone else's request dealt this round a moment earlier. Fine.
+  if (error) {
+    if (error.code === "23505") return;
+    throw friendlyDbError(error);
+  }
+
+  // Players who didn't bet sit out, so later rounds don't wait for them.
+  // Betting again brings them back.
+  const skipped = seats.filter((s) => s.status === "active" && !toDeal.some((d) => d.playerId === s.playerId));
+  if (skipped.length > 0) {
+    await createAdminClient()
+      .from("table_seats")
+      .update({ status: "sitting_out" })
+      .eq("table_id", table.id)
+      .in("player_id", skipped.map((s) => s.playerId));
+  }
+}
+
+// ---------- Actions ----------
+
+type Commit = {
+  stored: StoredRound;
+  next: BlackjackRound;
+  action: BlackjackAction;
+  actor: string | null;
+  timedOut: string[];
+  decision: ReturnType<typeof judgeDecision>;
+  seats: SeatInfo[];
+};
+
+async function commit(table: GameTable, c: Commit): Promise<number> {
+  const deadline = nextDeadline(table.rules, c.next, seatedSet(c.seats), new Date());
+  const { data, error } = await createAdminClient().rpc("bj_act", {
+    p_round_id: c.stored.id,
+    p_version: c.stored.version,
+    p_phase: c.next.phase,
+    p_public: publicView(c.next),
+    p_secret: c.next,
+    p_chips: [...actionChanges(c.stored.round, c.action), ...payoutChanges(c.next)],
+    p_decisions: c.decision ? [c.decision] : [],
+    p_stats: roundStats(table.rules, c.next),
+    p_deadline: orNull(deadline?.toISOString()),
+    p_actor: orNull(c.actor),
+    p_timed_out: c.timedOut,
+  });
+  if (error) throw error;
+  return data;
 }
 
 /**
  * Applies one player action. `version` is the round version the player was
- * looking at; if the round has moved on (e.g. a double-click), nothing happens.
+ * looking at. On your turn it must match exactly, so a double-click can't act
+ * twice. Insurance decisions happen at the same time for everyone, so those
+ * retry against the latest round instead (the engine still refuses repeats).
  */
 export async function takeAction(
   table: GameTable,
@@ -265,43 +274,80 @@ export async function takeAction(
   type: ActionType,
   hintsEnabled = false,
 ): Promise<RoundForPlayer> {
-  assertCanPlay(table, playerId);
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const [stored, seats] = await Promise.all([getLatestRound(table.id), getSeats(table.id)]);
+    if (!stored || stored.id !== roundId) throw new GameError("That hand is over. Refreshing…");
+    if (!seats.some((s) => s.playerId === playerId)) throw new GameError("You're not sitting at this table.");
+    if (stored.round.phase !== "early" && stored.version !== version) {
+      throw new GameError("That hand already moved on. Refreshing…");
+    }
 
-  const stored = await getLatestRound(table.id);
-  if (!stored || stored.id !== roundId || stored.version !== version) {
-    throw new GameError("That hand already moved on. Refreshing…");
+    const seat = stored.round.seats.findIndex((s) => s.playerId === playerId);
+    if (seat < 0) throw new GameError("You're not playing this hand.");
+
+    const action = { type, seat };
+    let next: BlackjackRound;
+    try {
+      next = applyAction(table.rules, stored.round, action);
+    } catch (e) {
+      if (e instanceof IllegalActionError) throw new GameError("That move isn't allowed right now.");
+      throw e;
+    }
+    const decision = judgeDecision(table.rules, stored.round, action, hintsEnabled);
+
+    try {
+      const newVersion = await commit(table, { stored, next, action, actor: playerId, timedOut: [], decision, seats });
+      const result = await getLatestRound(table.id);
+      return {
+        ...forPlayer(table, result ?? { ...stored, version: newVersion, round: next }, playerId),
+        feedback: decision
+          ? { onBook: decision.on_book, bookAction: decision.book_action as ActionType, situation: decision.situation }
+          : null,
+      };
+    } catch (e) {
+      const err = e as { code?: string; message: string };
+      // Someone else's insurance decision landed first: try again on the new round.
+      if (err.message?.includes("STALE_ROUND") && stored.round.phase === "early") continue;
+      throw friendlyDbError(err);
+    }
   }
+  throw new GameError("The table is busy. Please try again.");
+}
 
-  const seat = stored.round.seats.findIndex((s) => s.playerId === playerId);
-  if (seat < 0) throw new GameError("You're not playing this hand.");
+/**
+ * Moves the table along when time is up: finishes moves for players who ran
+ * out of time or left, and deals once betting closes. Anyone watching may
+ * call this; it only acts when a deadline has really passed.
+ */
+export async function runTimeouts(table: GameTable) {
+  for (let step = 0; step < 30; step++) {
+    const [stored, seats] = await Promise.all([getLatestRound(table.id), getSeats(table.id)]);
+    if (!stored || stored.round.phase === "settled") {
+      await dealIfReady(table.id);
+      return;
+    }
 
-  const action = { type, seat };
-  let next: BlackjackRound;
-  try {
-    next = applyAction(table.rules, stored.round, action);
-  } catch (e) {
-    if (e instanceof IllegalActionError) throw new GameError("That move isn't allowed right now.");
-    throw e;
+    const expired = stored.deadline !== null && new Date() >= stored.deadline;
+    const action = automaticAction(table.rules, stored.round, seatedSet(seats), expired);
+    if (!action) return;
+
+    const player = stored.round.seats[action.seat].playerId;
+    const next = applyAction(table.rules, stored.round, action);
+    try {
+      await commit(table, {
+        stored,
+        next,
+        action,
+        actor: null,
+        // Only players still at the table pick up a missed turn.
+        timedOut: seats.some((s) => s.playerId === player) ? [player] : [],
+        decision: null,
+        seats,
+      });
+    } catch (e) {
+      const err = e as { message: string };
+      if (!err.message?.includes("STALE_ROUND")) throw friendlyDbError(err);
+      // Someone else moved first; look again.
+    }
   }
-
-  const decision = judgeDecision(table.rules, stored.round, action, hintsEnabled);
-  const chips = [...actionChanges(stored.round, action), ...payoutChanges(next)];
-  const { data: newVersion, error } = await createAdminClient().rpc("blackjack_apply_action", {
-    p_round_id: stored.id,
-    p_version: stored.version,
-    p_phase: next.phase,
-    p_public: publicView(next),
-    p_secret: next,
-    p_chips: chips,
-    p_decisions: decision ? [decision] : [],
-    p_stats: roundStats(table.rules, next),
-  });
-  if (error) throw friendlyDbError(error);
-
-  return {
-    ...forPlayer(table, { id: stored.id, version: newVersion as number, round: next }, playerId),
-    feedback: decision
-      ? { onBook: decision.on_book, bookAction: decision.book_action as ActionType, situation: decision.situation }
-      : null,
-  };
 }
