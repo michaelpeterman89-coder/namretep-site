@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
-const SIGNED_IN_ONLY = ["/profile", "/blackjack", "/poker", "/lobby"];
+const SIGNED_IN_ONLY = ["/profile", "/blackjack", "/poker", "/lobby", "/admin"];
 const SIGNED_OUT_ONLY = ["/login", "/signup"];
 
 /**

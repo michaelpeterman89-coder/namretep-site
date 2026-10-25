@@ -18,6 +18,8 @@ function friendlyAuthError(error: AuthError): string {
     case "user_already_exists":
     case "email_exists":
       return "An account with that email already exists. Try logging in.";
+    case "user_banned":
+      return "This account has been suspended.";
     case "weak_password":
       return "That password is too weak. Try a longer one.";
     case "over_email_send_rate_limit":

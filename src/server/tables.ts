@@ -336,6 +336,11 @@ export async function standUp(table: GameTable, playerId: string) {
 /** Owner only, and only between hands. Everyone is unseated. */
 export async function closeTable(table: GameTable, playerId: string, roundInProgress: boolean) {
   if (table.ownerId !== playerId) throw new GameError("Only the table's creator can close it.");
+  await shutTable(table, roundInProgress);
+}
+
+/** Closes a table between hands, cashing out poker players. Callers check who may do it. */
+export async function shutTable(table: GameTable, roundInProgress: boolean) {
   if (roundInProgress) throw new GameError("Wait for the current hand to finish first.");
   const admin = createAdminClient();
   if (table.game === "holdem") {

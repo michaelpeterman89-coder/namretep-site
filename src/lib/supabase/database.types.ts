@@ -39,6 +39,58 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_actions: {
+        Row: {
+          action: string
+          admin_id: string | null
+          created_at: string
+          details: Json
+          id: number
+          table_id: string | null
+          target_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: never
+          table_id?: string | null
+          target_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: never
+          table_id?: string | null
+          target_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_actions_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_actions_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "game_tables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_actions_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blackjack_decisions: {
         Row: {
           action: string
@@ -419,7 +471,9 @@ export type Database = {
           chips: number
           created_at: string
           id: string
+          is_admin: boolean
           last_refill_at: string | null
+          suspended_at: string | null
           username: string
         }
         Insert: {
@@ -427,7 +481,9 @@ export type Database = {
           chips?: number
           created_at?: string
           id: string
+          is_admin?: boolean
           last_refill_at?: string | null
+          suspended_at?: string | null
           username: string
         }
         Update: {
@@ -435,7 +491,9 @@ export type Database = {
           chips?: number
           created_at?: string
           id?: string
+          is_admin?: boolean
           last_refill_at?: string | null
+          suspended_at?: string | null
           username?: string
         }
         Relationships: []
@@ -535,10 +593,48 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_adjust_chips: {
+        Args: {
+          p_admin: string
+          p_amount: number
+          p_note: string
+          p_target: string
+        }
+        Returns: number
+      }
+      admin_log: {
+        Args: {
+          p_action: string
+          p_admin: string
+          p_details: Json
+          p_table: string
+          p_target: string
+        }
+        Returns: undefined
+      }
+      admin_overview: { Args: { p_admin: string }; Returns: Json }
+      admin_rename: {
+        Args: { p_admin: string; p_target: string; p_username: string }
+        Returns: undefined
+      }
+      admin_set_admin: {
+        Args: { p_admin: string; p_is_admin: boolean; p_target: string }
+        Returns: undefined
+      }
+      admin_set_suspended: {
+        Args: {
+          p_admin: string
+          p_note: string
+          p_suspended: boolean
+          p_target: string
+        }
+        Returns: undefined
+      }
       apply_chip_changes: {
         Args: { p_changes: Json; p_round_id: string; p_table_id: string }
         Returns: undefined
       }
+      assert_admin: { Args: { p_admin: string }; Returns: undefined }
       bj_act: {
         Args: {
           p_actor: string

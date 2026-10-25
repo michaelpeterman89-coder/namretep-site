@@ -186,6 +186,11 @@ export async function buyIn(table: PokerTable, playerId: string, seatNumber: num
   await startHandIfReady(table.id);
 }
 
+/** True while a hand is being played at the table. */
+export async function isHandInProgress(tableId: string): Promise<boolean> {
+  return (await getLatestHand(tableId))?.state.hand.phase === "betting";
+}
+
 /**
  * Leaves the table. Between hands you're cashed out now; mid-hand you're
  * folded when it's your turn and cashed out when the hand ends.
