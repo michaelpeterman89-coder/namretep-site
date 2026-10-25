@@ -6,6 +6,12 @@ const RANK_NAMES: Record<string, string> = { A: "Ace", T: "10", J: "Jack", Q: "Q
 
 export type CardSize = "md" | "sm";
 
+/** A card's name for screen readers, e.g. "Ace of spades". */
+export function cardLabel(card: Card): string {
+  const rank = card[0];
+  return `${RANK_NAMES[rank] ?? rank} of ${SUIT_NAMES[card[1] as keyof typeof SUIT_NAMES]}`;
+}
+
 /** Width and height of a card at each size (shared by the flip wrapper at the table). */
 export const CARD_DIMENSIONS: Record<CardSize, string> = {
   md: "h-20 w-14 sm:h-28 sm:w-20",
@@ -41,7 +47,7 @@ export function PlayingCard({
   return (
     <div
       role="img"
-      aria-label={`${RANK_NAMES[rank] ?? rank} of ${SUIT_NAMES[suit]}`}
+      aria-label={cardLabel(card)}
       className={`card-face ${animate ? "card-deal" : ""} ${CARD_DIMENSIONS[size]} ${s.pad} flex flex-col justify-between font-display ${
         red ? "text-neon-magenta" : "text-ink"
       }`}

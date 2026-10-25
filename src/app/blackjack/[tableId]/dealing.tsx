@@ -220,8 +220,10 @@ export function DealtCard({ slot, card, size = "md" }: { slot: string; card: Car
         className="flip-inner"
         style={{ transform: card ? "rotateY(0deg)" : "rotateY(180deg)", transitionDelay: `${flipDelay}ms` }}
       >
-        <div className="flip-face">{card && <PlayingCard card={card} size={size} animate={false} />}</div>
-        <div className="flip-face flip-back">
+        <div className="flip-face" aria-hidden={!card}>
+          {card && <PlayingCard card={card} size={size} animate={false} />}
+        </div>
+        <div className="flip-face flip-back" aria-hidden={Boolean(card)}>
           <CardBack size={size} animate={false} />
         </div>
       </div>
@@ -314,7 +316,7 @@ export function Shoe({ cardsLeft }: { cardsLeft: number | null }) {
   return (
     <div className="absolute top-3 right-3 flex flex-col items-center gap-1 sm:top-5 sm:right-5" aria-hidden>
       <div ref={shoeRef} className="shoe" />
-      {cardsLeft !== null && <span className="font-display text-[0.5rem] text-starlight/60">{cardsLeft}</span>}
+      {cardsLeft !== null && <span className="font-display text-[0.5rem] text-starlight/70">{cardsLeft}</span>}
     </div>
   );
 }

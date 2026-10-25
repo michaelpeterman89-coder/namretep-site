@@ -24,6 +24,33 @@ body {
   color: var(--color-starlight);
 }
 
+/* A clear focus outline on everything you can click or type in. */
+a:focus-visible,
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 3px solid var(--color-neon-cyan);
+  outline-offset: 3px;
+}
+
+/* Keyboard shortcut labels, shown only on devices with a mouse. */
+.kbd {
+  display: none;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.3rem;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  font-size: 0.55rem;
+  opacity: 0.7;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .kbd {
+    display: inline-block;
+  }
+}
+
 /* ---------- Space background ---------- */
 
 .space-bg {

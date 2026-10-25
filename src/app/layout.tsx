@@ -27,6 +27,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${pixelFont.variable} ${bodyFont.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
+        <a
+          href="#main"
+          className="sr-only z-[60] rounded-md bg-neon-cyan px-3 py-2 font-display text-xs text-ink focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+        >
+          Skip to content
+        </a>
         <div aria-hidden className="space-bg">
           <div className="nebula" />
           <div className="stars stars-far" />
@@ -48,7 +54,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </Suspense>
         </header>
 
-        <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pb-12 sm:px-6">
+        <main id="main" tabIndex={-1} className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pb-12 outline-none sm:px-6">
           {children}
         </main>
 
