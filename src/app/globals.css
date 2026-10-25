@@ -1,0 +1,227 @@
+@import "tailwindcss";
+
+@theme {
+  --color-space-950: #06041a;
+  --color-space-900: #0d0a2b;
+  --color-space-800: #1a1442;
+  --color-space-700: #2a2163;
+  --color-neon-magenta: #ff3ea5;
+  --color-neon-cyan: #3ef0ff;
+  --color-neon-gold: #ffcf3e;
+  --color-ink: #0a0716;
+  --color-starlight: #ece8ff;
+
+  --font-display: var(--font-pixel), ui-monospace, monospace;
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-space-950);
+  color: var(--color-starlight);
+}
+
+/* ---------- Space background ---------- */
+
+.space-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 120%, var(--color-space-800), transparent 60%),
+    linear-gradient(180deg, var(--color-space-950), var(--color-space-900));
+}
+
+/* Each layer is a tile of tiny stars that drifts by exactly one
+   tile per loop, so the animation repeats seamlessly. */
+.stars {
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat;
+  image-rendering: pixelated;
+  animation: star-drift linear infinite;
+}
+
+.stars-far {
+  --tile: 180px;
+  background-size: var(--tile) var(--tile);
+  background-image:
+    radial-gradient(circle at 23px 41px, #fff6 1px, transparent 1.5px),
+    radial-gradient(circle at 97px 12px, #fff5 1px, transparent 1.5px),
+    radial-gradient(circle at 151px 88px, #fff6 1px, transparent 1.5px),
+    radial-gradient(circle at 64px 133px, #fff4 1px, transparent 1.5px),
+    radial-gradient(circle at 128px 160px, #fff5 1px, transparent 1.5px),
+    radial-gradient(circle at 8px 102px, #fff4 1px, transparent 1.5px);
+  animation-duration: 240s;
+}
+
+.stars-mid {
+  --tile: 260px;
+  background-size: var(--tile) var(--tile);
+  background-image:
+    radial-gradient(circle at 40px 70px, #fffa 1px, transparent 1.5px),
+    radial-gradient(circle at 190px 30px, #bdf7ff 1px, transparent 1.5px),
+    radial-gradient(circle at 120px 200px, #fff9 1px, transparent 1.5px),
+    radial-gradient(circle at 230px 150px, #ffd6ec 1px, transparent 1.5px);
+  animation-duration: 150s;
+}
+
+.stars-near {
+  --tile: 420px;
+  background-size: var(--tile) var(--tile);
+  background-image:
+    radial-gradient(circle at 80px 300px, #fff 1.5px, transparent 2px),
+    radial-gradient(circle at 330px 90px, var(--color-neon-cyan) 1.5px, transparent 2px),
+    radial-gradient(circle at 250px 380px, var(--color-neon-gold) 1.5px, transparent 2px);
+  animation-duration: 90s;
+}
+
+@keyframes star-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 var(--tile);
+  }
+}
+
+.nebula {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(circle at 20% 30%, #ff3ea533, transparent 35%),
+    radial-gradient(circle at 80% 20%, #3ef0ff22, transparent 30%),
+    radial-gradient(circle at 60% 80%, #7b3eff2e, transparent 40%);
+  filter: blur(20px);
+  animation: nebula-pulse 30s ease-in-out infinite alternate;
+}
+
+@keyframes nebula-pulse {
+  from {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.8;
+  }
+  to {
+    transform: scale(1.08) rotate(3deg);
+    opacity: 1;
+  }
+}
+
+.planet {
+  position: absolute;
+  right: -6rem;
+  bottom: -6rem;
+  width: 22rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #6a4bd6, #2a1a6e 55%, #0d0a2b 80%);
+  box-shadow:
+    0 0 60px #7b3eff55,
+    inset -30px -20px 60px #06041a;
+  opacity: 0.7;
+}
+
+.planet::after {
+  content: "";
+  position: absolute;
+  inset: 42% -25%;
+  border: 6px solid #ff3ea566;
+  border-radius: 50%;
+  transform: rotate(-18deg);
+}
+
+/* ---------- CRT overlay ---------- */
+
+.crt-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background:
+    repeating-linear-gradient(0deg, #0000 0 2px, #0006 2px 3px),
+    radial-gradient(ellipse at center, transparent 60%, #000a 100%);
+  animation: crt-flicker 6s steps(1) infinite;
+}
+
+@keyframes crt-flicker {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ---------- Chunky pixel UI pieces ---------- */
+
+.pixel-panel {
+  background: color-mix(in srgb, var(--color-space-900) 85%, transparent);
+  border: 3px solid var(--color-ink);
+  box-shadow:
+    inset 0 0 0 2px var(--color-space-700),
+    6px 6px 0 var(--color-ink);
+  border-radius: 6px;
+}
+
+.pixel-btn {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 0.85rem 1.1rem;
+  border: 3px solid var(--color-ink);
+  border-radius: 6px;
+  box-shadow: 4px 4px 0 var(--color-ink);
+  transition:
+    transform 80ms ease-out,
+    box-shadow 80ms ease-out;
+}
+
+.pixel-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--color-ink);
+}
+
+.pixel-btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--color-ink);
+}
+
+.pixel-btn:focus-visible {
+  outline: 3px solid var(--color-neon-cyan);
+  outline-offset: 3px;
+}
+
+.pixel-card {
+  border: 4px solid var(--color-ink);
+  border-radius: 10px;
+  background: #fbf7ef;
+  box-shadow: 6px 6px 0 var(--color-ink);
+  animation: card-wobble 4s ease-in-out infinite;
+}
+
+@keyframes card-wobble {
+  0%,
+  100% {
+    transform: rotate(var(--tilt, 0deg)) translateY(0);
+  }
+  50% {
+    transform: rotate(calc(var(--tilt, 0deg) * -1)) translateY(-6px);
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
