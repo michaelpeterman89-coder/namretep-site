@@ -346,6 +346,73 @@ export type Database = {
           },
         ]
       }
+      poker_hand_secrets: {
+        Row: {
+          hand_id: string
+          state: Json
+        }
+        Insert: {
+          hand_id: string
+          state: Json
+        }
+        Update: {
+          hand_id?: string
+          state?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poker_hand_secrets_hand_id_fkey"
+            columns: ["hand_id"]
+            isOneToOne: true
+            referencedRelation: "poker_hands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poker_hands: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          deadline_at: string | null
+          hand_number: number
+          id: string
+          phase: string
+          public_state: Json
+          table_id: string
+          version: number
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          deadline_at?: string | null
+          hand_number: number
+          id?: string
+          phase: string
+          public_state: Json
+          table_id: string
+          version?: number
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          deadline_at?: string | null
+          hand_number?: number
+          id?: string
+          phase?: string
+          public_state?: Json
+          table_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poker_hands_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "game_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar: string
@@ -409,31 +476,40 @@ export type Database = {
       table_seats: {
         Row: {
           bet_placed_at: string | null
+          bot_name: string | null
           joined_at: string
+          leaving: boolean
           missed_turns: number
           pending_bet: number | null
-          player_id: string
+          player_id: string | null
           seat_number: number
+          stack: number | null
           status: string
           table_id: string
         }
         Insert: {
           bet_placed_at?: string | null
+          bot_name?: string | null
           joined_at?: string
+          leaving?: boolean
           missed_turns?: number
           pending_bet?: number | null
-          player_id: string
+          player_id?: string | null
           seat_number: number
+          stack?: number | null
           status?: string
           table_id: string
         }
         Update: {
           bet_placed_at?: string | null
+          bot_name?: string | null
           joined_at?: string
+          leaving?: boolean
           missed_turns?: number
           pending_bet?: number | null
-          player_id?: string
+          player_id?: string | null
           seat_number?: number
+          stack?: number | null
           status?: string
           table_id?: string
         }
@@ -515,6 +591,47 @@ export type Database = {
           situation: string
           situation_key: string
           total: number
+        }[]
+      }
+      poker_apply: {
+        Args: {
+          p_actor: string
+          p_deadline: string
+          p_hand_id: string
+          p_phase: string
+          p_public: Json
+          p_secret: Json
+          p_stacks: Json
+          p_stats: Json
+          p_timed_out: string[]
+          p_version: number
+        }
+        Returns: number
+      }
+      poker_buy_in: {
+        Args: {
+          p_amount: number
+          p_player_id: string
+          p_seat_number: number
+          p_table_id: string
+        }
+        Returns: undefined
+      }
+      poker_cash_out: {
+        Args: { p_player_id: string; p_table_id: string }
+        Returns: number
+      }
+      poker_start_hand: {
+        Args: {
+          p_deadline: string
+          p_phase: string
+          p_public: Json
+          p_secret: Json
+          p_table_id: string
+        }
+        Returns: {
+          hand_id: string
+          hand_number: number
         }[]
       }
       record_game_stats: { Args: { p_stats: Json }; Returns: undefined }
