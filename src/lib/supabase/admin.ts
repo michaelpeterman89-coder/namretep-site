@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types";
 import { getSupabaseEnv } from "./env";
 
 /**
@@ -13,7 +14,7 @@ export function createAdminClient() {
   if (!secretKey) {
     throw new Error("Missing SUPABASE_SECRET_KEY. Add it to .env.local and to Vercel.");
   }
-  return createClient(url, secretKey, {
+  return createClient<Database>(url, secretKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
 }
