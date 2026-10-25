@@ -456,6 +456,40 @@ button:focus-visible > .chip {
   font-size: 0.6rem;
 }
 
+/* ---------- Win effects ---------- */
+
+.burst-piece {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 6px;
+  box-shadow: 1px 1px 0 var(--color-ink);
+}
+
+.table-shake {
+  animation: table-shake 500ms ease-in-out;
+}
+
+@keyframes table-shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-6px, 2px) rotate(-0.4deg);
+  }
+  40% {
+    transform: translate(5px, -2px) rotate(0.4deg);
+  }
+  60% {
+    transform: translate(-4px, 1px);
+  }
+  80% {
+    transform: translate(3px, -1px);
+  }
+}
+
 /* ---------- Reduced motion ---------- */
 
 @media (prefers-reduced-motion: reduce) {

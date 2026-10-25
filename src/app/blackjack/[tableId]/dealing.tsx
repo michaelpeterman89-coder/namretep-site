@@ -3,6 +3,7 @@
 import { createContext, useContext, useLayoutEffect, useRef, type RefObject } from "react";
 import { ChipStack, DENOMINATIONS, type ChipSize } from "@/components/chip";
 import { CARD_DIMENSIONS, CardBack, PlayingCard, type CardSize } from "@/components/playing-card";
+import { playSound, playSoundAt } from "@/lib/sound";
 import type { Card } from "@/lib/games/blackjack/cards";
 import type { PublicRound } from "@/lib/games/blackjack/engine";
 
@@ -175,6 +176,7 @@ export function DealtCard({ slot, card, size = "md" }: { slot: string; card: Car
     const shoe = shoeRef.current;
     if (flown.current || !el || !shoe || entry?.kind !== "deal") return;
     flown.current = true;
+    playSoundAt("deal", entry.delay);
     const from = shoe.getBoundingClientRect();
     const to = el.getBoundingClientRect();
     const dx = from.left + from.width / 2 - (to.left + to.width / 2);
@@ -203,6 +205,13 @@ export function DealtCard({ slot, card, size = "md" }: { slot: string; card: Car
     );
     return () => sweep.cancel();
   }, [clearAt, discardRef]);
+
+  const flipped = useRef(false);
+  useLayoutEffect(() => {
+    if (flipped.current || entry?.kind !== "flip" || !card) return;
+    flipped.current = true;
+    playSoundAt("flip", entry.delay);
+  }, [entry, card]);
 
   const flipDelay = entry?.kind === "flip" ? entry.delay : 0;
   return (
@@ -245,6 +254,7 @@ export function MovingStack({
     const el = ref.current;
     const tray = trayRef.current;
     if (!el || !tray || (!from && !to)) return;
+    playSound("chip");
     const { dx, dy } = centerOffset(tray, el);
     const away = { transform: `translate(${dx}px, ${dy}px) scale(0.6)`, opacity: 0 };
     const here = { transform: "translate(0, 0) scale(1)", opacity: 1 };

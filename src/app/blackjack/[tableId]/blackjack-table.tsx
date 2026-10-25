@@ -3,12 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/avatar";
+import { Burst } from "@/components/burst";
+import { TickingNumber } from "@/components/ticking-number";
 import { formatChips } from "@/lib/chips";
 import { handValue, isTwoCard21, type Card } from "@/lib/games/blackjack/cards";
 import type { ActionType, PlayerHand, Seat } from "@/lib/games/blackjack/engine";
 import { houseEdge, rulesSummary } from "@/lib/games/blackjack/rules";
 import { actionLabel } from "@/lib/games/blackjack/strategy";
 import { createClient } from "@/lib/supabase/client";
+import { playSound } from "@/lib/sound";
 import { useStoredToggle } from "@/lib/use-stored-toggle";
 import type { TableView } from "@/server/blackjack";
 import type { SeatInfo } from "@/server/tables";
@@ -360,6 +363,42 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
     return 0;
   }
 
+  // ---------- Sounds ----------
+
+  const myNet = round?.view.phase === "settled" && myRoundSeat ? seatNet(myRoundSeat) : null;
+  const myBlackjack = Boolean(myRoundSeat?.hands.some((h) => h.outcome === "blackjack"));
+  const announced = useRef<string | null>(null);
+  useEffect(() => {
+    // Once per hand, when the result is shown (not for hands finished before the page opened).
+    if (!resultsShown || !round || myNet === null || !settlement || settlement.payAt.size === 0) return;
+    if (announced.current === round.roundId) return;
+    announced.current = round.roundId;
+    playSound(myNet > 0 ? (myBlackjack ? "blackjack" : "win") : myNet < 0 ? "lose" : "push");
+  }, [resultsShown, round, myNet, myBlackjack, settlement]);
+
+  const othersInRound = (round?.view.seats.length ?? 0) > 1;
+  const yourTurn = myMove && !busy;
+  const wasYourTurn = useRef(false);
+  useEffect(() => {
+    if (yourTurn && !wasYourTurn.current && othersInRound) playSound("turn");
+    wasYourTurn.current = yourTurn;
+  }, [yourTurn, othersInRound]);
+
+  useEffect(() => {
+    if (yourTurn && left !== null && left > 0 && left <= 5) playSound("tick");
+  }, [yourTurn, left]);
+
+  // A blackjack, or winning at least 10x the table minimum, shakes the table.
+  const bigWin = Boolean(
+    settlement &&
+      settlement.payAt.size > 0 &&
+      myNet !== null &&
+      myNet > 0 &&
+      (myBlackjack || myNet >= 10 * table.minBet) &&
+      now >= settlement.resultsAt &&
+      now < settlement.resultsAt + 700,
+  );
+
   let status: string | null = null;
   if (round?.view.phase === "early") {
     status = round.view.dealer[0][0] === "A" ? "Dealer shows an ace." : "Dealer will check for blackjack.";
@@ -399,7 +438,9 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
         </div>
         <p className="flex items-baseline gap-2">
           <span className="text-sm text-starlight/70">Balance</span>
-          <span className="font-display text-base text-neon-gold">{formatChips(shownChips)}</span>
+          <span className="font-display text-base text-neon-gold">
+            <TickingNumber value={shownChips} />
+          </span>
         </p>
       </div>
 
@@ -407,7 +448,9 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
       <DealContext value={{ shoeRef, discardRef, trayRef, plan, settlement }}>
       <section
         aria-label="Blackjack table"
-        className="pixel-panel relative flex min-h-[24rem] flex-col items-center justify-between gap-6 overflow-hidden px-3 py-6 sm:px-6"
+        className={`pixel-panel relative flex min-h-[24rem] flex-col items-center justify-between gap-6 overflow-hidden px-3 py-6 sm:px-6 ${
+          bigWin ? "table-shake" : ""
+        }`}
         style={{ background: "radial-gradient(ellipse at 50% 0%, #2a1a6e, var(--color-space-900) 70%)" }}
       >
         <Shoe cardsLeft={round ? round.view.cardsLeftInShoe : null} />
@@ -557,7 +600,10 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
                 <button
                   key={d.value}
                   type="button"
-                  onClick={() => setBet((b) => Math.min(b + d.value, table.maxBet))}
+                  onClick={() => {
+                    playSound("chip");
+                    setBet((b) => Math.min(b + d.value, table.maxBet));
+                  }}
                   className="rounded-full"
                   aria-label={`Add ${formatChips(d.value)} to bet`}
                   title={`${d.name} · ${formatChips(d.value)}`}
@@ -721,7 +767,7 @@ function SeatSpot({
             return (
               <div
                 key={`${roundKey}-${i}`}
-                className={`flex flex-col items-center gap-1.5 rounded-md p-1.5 ${
+                className={`relative flex flex-col items-center gap-1.5 rounded-md p-1.5 ${
                   activeHand === i ? "bg-neon-cyan/10 ring-2 ring-neon-cyan" : ""
                 }`}
               >
@@ -740,6 +786,7 @@ function SeatSpot({
                 </span>
                 <div className="flex items-end gap-1.5">
                   <HandChips hand={hand} paid={paid} leaveAt={settlement?.clearAt} size={small ? "sm" : "md"} />
+                  {paid && (hand.returned ?? 0) > hand.bet && <Burst big={hand.outcome === "blackjack"} />}
                   {outcome && (
                     <span className={`rounded px-1.5 py-0.5 font-display text-[0.55rem] ${outcome.style}`}>
                       {outcome.text}
