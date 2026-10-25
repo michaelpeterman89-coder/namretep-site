@@ -23,8 +23,8 @@ export async function createClient() {
             cookieStore.set(name, value, options);
           }
         } catch {
-          // Server Components can't set cookies. Session refresh will be
-          // handled in proxy.ts once auth is added (Phase 2).
+          // Server Components can't set cookies; src/proxy.ts refreshes the
+          // session before the page renders, so this is safe to ignore.
         }
       },
     },

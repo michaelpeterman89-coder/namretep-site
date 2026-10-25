@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const games = [
   { name: "Blackjack", status: "Coming first", accent: "text-neon-cyan" },
   { name: "Roulette", status: "Later", accent: "text-starlight/50" },
@@ -37,6 +39,9 @@ export default function Home() {
           Create a table, set the rules your way, and play solo or with friends. Track your stats
           and see how often you play by the book.
         </p>
+        <Link href="/signup" className="pixel-btn bg-neon-magenta text-ink">
+          Get 10,000 free chips
+        </Link>
         <p className="font-display text-xs text-neon-gold">Virtual chips only</p>
       </section>
 

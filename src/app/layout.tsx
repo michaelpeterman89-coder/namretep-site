@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Press_Start_2P, Space_Grotesk } from "next/font/google";
 import Link from "next/link";
+import { Suspense } from "react";
 import { CrtOverlay, CrtToggle } from "@/components/crt";
+import { HeaderAccount } from "@/components/header-account";
 import "./globals.css";
 
 const pixelFont = Press_Start_2P({
@@ -39,15 +41,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           >
             NAMRETEP
           </Link>
-          <CrtToggle />
+          {/* Reads the login cookie, so it streams in after the rest of the page. */}
+          <Suspense fallback={<div className="h-10 w-32" />}>
+            <HeaderAccount />
+          </Suspense>
         </header>
 
         <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pb-12 sm:px-6">
           {children}
         </main>
 
-        <footer className="px-4 py-6 text-center text-sm text-starlight/60">
-          Virtual chips only. No real money, no purchases, no cash-out.
+        <footer className="flex flex-col items-center gap-4 px-4 py-6 text-center text-sm text-starlight/60">
+          <p>Virtual chips only. No real money, no purchases, no cash-out.</p>
+          <CrtToggle />
         </footer>
 
         <CrtOverlay />
