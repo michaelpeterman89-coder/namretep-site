@@ -113,7 +113,7 @@ export function CreateTableForm() {
             min={1}
             max={7}
             defaultValue={1}
-            hint="Multiplayer arrives in a later update. For now only you play at your tables."
+            hint="1 for solo play. With more seats, others can join from the lobby (public) or your invite link (private)."
           />
         </Section>
 
