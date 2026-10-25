@@ -4,10 +4,12 @@ import {
   applyAction,
   betChanges,
   IllegalActionError,
+  judgeDecision,
   legalActions,
   parseRules,
   payoutChanges,
   publicView,
+  roundStats,
   startRound,
   type ActionType,
   type BlackjackRound,
@@ -49,6 +51,8 @@ export type RoundForPlayer = {
   view: PublicRound;
   seat: number;
   actions: ActionType[];
+  /** How the player's last action compared with basic strategy (null if there was no real choice). */
+  feedback?: { onBook: boolean; bookAction: ActionType; situation: string } | null;
 };
 
 type TableRow = {
@@ -235,12 +239,13 @@ export async function dealRound(table: GameTable, playerId: string, bet: number)
   const chips: ChipChange[] = [...betChanges(round), ...payoutChanges(round)];
 
   const { data, error } = await createAdminClient()
-    .rpc("bj_start_round", {
+    .rpc("blackjack_start_round", {
       p_table_id: table.id,
       p_phase: round.phase,
       p_public: publicView(round),
       p_secret: round,
       p_chips: chips,
+      p_stats: roundStats(table.rules, round),
     })
     .single<{ round_id: string; round_number: number }>();
   if (error || !data) throw friendlyDbError(error ?? { message: "No round returned" });
@@ -258,6 +263,7 @@ export async function takeAction(
   roundId: string,
   version: number,
   type: ActionType,
+  hintsEnabled = false,
 ): Promise<RoundForPlayer> {
   assertCanPlay(table, playerId);
 
@@ -278,16 +284,24 @@ export async function takeAction(
     throw e;
   }
 
+  const decision = judgeDecision(table.rules, stored.round, action, hintsEnabled);
   const chips = [...actionChanges(stored.round, action), ...payoutChanges(next)];
-  const { data: newVersion, error } = await createAdminClient().rpc("bj_update_round", {
+  const { data: newVersion, error } = await createAdminClient().rpc("blackjack_apply_action", {
     p_round_id: stored.id,
     p_version: stored.version,
     p_phase: next.phase,
     p_public: publicView(next),
     p_secret: next,
     p_chips: chips,
+    p_decisions: decision ? [decision] : [],
+    p_stats: roundStats(table.rules, next),
   });
   if (error) throw friendlyDbError(error);
 
-  return forPlayer(table, { id: stored.id, version: newVersion as number, round: next }, playerId);
+  return {
+    ...forPlayer(table, { id: stored.id, version: newVersion as number, round: next }, playerId),
+    feedback: decision
+      ? { onBook: decision.on_book, bookAction: decision.book_action as ActionType, situation: decision.situation }
+      : null,
+  };
 }

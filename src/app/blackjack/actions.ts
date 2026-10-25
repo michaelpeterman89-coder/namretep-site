@@ -100,11 +100,12 @@ export async function playAction(
   roundId: unknown,
   version: unknown,
   type: unknown,
+  hintsEnabled: unknown = false,
 ): Promise<PlayResult> {
   return run(tableId, async (table, playerId) => {
     if (!isId(roundId) || !Number.isInteger(version) || !ACTION_TYPES.includes(type as ActionType)) {
       throw new GameError("That move isn't allowed right now.");
     }
-    return takeAction(table, playerId, roundId, version as number, type as ActionType);
+    return takeAction(table, playerId, roundId, version as number, type as ActionType, hintsEnabled === true);
   });
 }
