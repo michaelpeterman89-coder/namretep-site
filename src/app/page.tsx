@@ -2,11 +2,11 @@ import Link from "next/link";
 
 const games: { name: string; status: string; accent: string; href?: string }[] = [
   { name: "Blackjack", status: "Play now", accent: "text-neon-cyan", href: "/blackjack" },
-  { name: "Roulette", status: "Later", accent: "text-starlight/50" },
-  { name: "Craps", status: "Later", accent: "text-starlight/50" },
-  { name: "Baccarat", status: "Later", accent: "text-starlight/50" },
-  { name: "Texas Hold'em", status: "Later", accent: "text-starlight/50" },
-  { name: "Video Poker", status: "Later", accent: "text-starlight/50" },
+  { name: "Roulette", status: "Later", accent: "text-starlight/70" },
+  { name: "Craps", status: "Later", accent: "text-starlight/70" },
+  { name: "Baccarat", status: "Later", accent: "text-starlight/70" },
+  { name: "Texas Hold'em", status: "Later", accent: "text-starlight/70" },
+  { name: "Video Poker", status: "Later", accent: "text-starlight/70" },
 ];
 
 function PixelCard({ rank, suit, red, tilt }: { rank: string; suit: string; red?: boolean; tilt: string }) {

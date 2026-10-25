@@ -25,7 +25,7 @@ export function TableList({ tables }: { tables: TableListing[] }) {
               <span className="text-sm text-starlight/70">
                 Bets {formatChips(t.minBet)}–{formatChips(t.maxBet)} · House edge ≈ {houseEdge(t.rules).toFixed(2)}%
               </span>
-              <span className={`text-sm ${open > 0 ? "text-neon-gold" : "text-starlight/50"}`}>
+              <span className={`text-sm ${open > 0 ? "text-neon-gold" : "text-starlight/70"}`}>
                 {t.seated} of {t.seats} seated · {open > 0 ? `${open} open` : "full (watch only)"}
               </span>
             </Link>
