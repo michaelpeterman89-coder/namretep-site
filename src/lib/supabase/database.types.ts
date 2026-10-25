@@ -495,33 +495,6 @@ export type Database = {
           round_number: number
         }[]
       }
-      blackjack_apply_action: {
-        Args: {
-          p_chips: Json
-          p_decisions: Json
-          p_phase: string
-          p_public: Json
-          p_round_id: string
-          p_secret: Json
-          p_stats: Json
-          p_version: number
-        }
-        Returns: number
-      }
-      blackjack_start_round: {
-        Args: {
-          p_chips: Json
-          p_phase: string
-          p_public: Json
-          p_secret: Json
-          p_stats: Json
-          p_table_id: string
-        }
-        Returns: {
-          round_id: string
-          round_number: number
-        }[]
-      }
       can_view_table: { Args: { p_table_id: string }; Returns: boolean }
       claim_daily_refill: { Args: never; Returns: number }
       close_idle_tables: { Args: never; Returns: number }
