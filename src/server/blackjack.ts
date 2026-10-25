@@ -151,6 +151,31 @@ export async function getTable(tableId: string): Promise<GameTable | null> {
   return data ? toTable(data) : null;
 }
 
+export async function listTablesForOwner(ownerId: string): Promise<GameTable[]> {
+  const { data, error } = await createAdminClient()
+    .from("game_tables")
+    .select(TABLE_COLUMNS)
+    .eq("owner_id", ownerId)
+    .eq("status", "open")
+    .order("last_activity_at", { ascending: false });
+  if (error) throw friendlyDbError(error);
+  return (data as TableRow[]).map(toTable);
+}
+
+/** A player's current balance, read fresh from the database. */
+export async function getPlayerChips(playerId: string): Promise<number> {
+  const { data, error } = await createAdminClient().from("profiles").select("chips").eq("id", playerId).single();
+  if (error) throw friendlyDbError(error);
+  return Number(data.chips);
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** True for strings shaped like a table/round id, so junk never reaches the database. */
+export function isId(value: unknown): value is string {
+  return typeof value === "string" && UUID_PATTERN.test(value);
+}
+
 /** Phase 3 is solo play: only the table's owner can play at it. */
 function assertCanPlay(table: GameTable, playerId: string) {
   if (table.ownerId !== playerId) throw new GameError("Only this table's owner can play here (for now).");
