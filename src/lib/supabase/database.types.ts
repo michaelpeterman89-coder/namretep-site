@@ -376,30 +376,6 @@ export type Database = {
         Args: { p_changes: Json; p_round_id: string; p_table_id: string }
         Returns: undefined
       }
-      bj_start_round: {
-        Args: {
-          p_chips: Json
-          p_phase: string
-          p_public: Json
-          p_secret: Json
-          p_table_id: string
-        }
-        Returns: {
-          round_id: string
-          round_number: number
-        }[]
-      }
-      bj_update_round: {
-        Args: {
-          p_chips: Json
-          p_phase: string
-          p_public: Json
-          p_round_id: string
-          p_secret: Json
-          p_version: number
-        }
-        Returns: number
-      }
       blackjack_apply_action: {
         Args: {
           p_chips: Json
