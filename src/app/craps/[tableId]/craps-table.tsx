@@ -177,6 +177,40 @@ export function CrapsTableView({ initialView }: { initialView: CrapsView }) {
     setWonKeys({ n: last.n, keys });
   }, []);
 
+  // The dice tumble from the moment the shooter clicks (or a new roll arrives)
+  // until the result is in and at least TUMBLE_MS has passed. While they
+  // tumble they show random faces, never the previous roll.
+  const tumbleStart = useRef(0);
+  const landing = useRef(false);
+
+  const startTumble = useCallback(() => {
+    if (tumblingRef.current) return;
+    tumblingRef.current = true;
+    landing.current = false;
+    tumbleStart.current = Date.now();
+    setTumbling(true);
+    playSound("deal");
+  }, []);
+
+  /** Lands the dice on the newest result (or, if `withResult` is false, just stops them). */
+  const land = useCallback(
+    (withResult: boolean) => {
+      if (!tumblingRef.current || landing.current) return;
+      landing.current = true;
+      const wait = withResult ? Math.max(0, TUMBLE_MS - (Date.now() - tumbleStart.current)) : 0;
+      setTimeout(() => {
+        tumblingRef.current = false;
+        landing.current = false;
+        setTumbling(false);
+        const latest = latestView.current;
+        shownRoll.current = Math.max(shownRoll.current, latest.game.lastRoll?.n ?? 0);
+        setView(latest);
+        if (withResult) reveal(latest);
+      }, wait);
+    },
+    [reveal],
+  );
+
   const accept = useCallback(
     (next: CrapsView | null) => {
       if (!next || next.serverNow < latestAt.current) return;
@@ -184,31 +218,32 @@ export function CrapsTableView({ initialView }: { initialView: CrapsView }) {
       latestView.current = next;
       setOffset(new Date(next.serverNow).getTime() - Date.now());
       const n = next.game.lastRoll?.n ?? 0;
-      if (tumblingRef.current) return; // shown when the dice land
       if (n > shownRoll.current) {
         shownRoll.current = n;
-        if (prefersReducedMotion()) {
+        if (prefersReducedMotion() && !tumblingRef.current) {
           setView(next);
           reveal(next);
           return;
         }
-        tumblingRef.current = true;
-        setTumbling(true);
-        playSound("deal");
-        setTimeout(() => {
-          tumblingRef.current = false;
-          setTumbling(false);
-          const latest = latestView.current;
-          shownRoll.current = Math.max(shownRoll.current, latest.game.lastRoll?.n ?? 0);
-          setView(latest);
-          reveal(latest);
-        }, TUMBLE_MS);
+        startTumble();
+        land(true);
         return;
       }
+      if (tumblingRef.current) return; // shown when the dice land
       setView(next);
     },
-    [reveal],
+    [reveal, startTumble, land],
   );
+
+  // Random faces while the dice are in the air.
+  const [faces, setFaces] = useState<[number, number]>([1, 1]);
+  useEffect(() => {
+    if (!tumbling) return;
+    const spin = () => setFaces([1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)]);
+    spin();
+    const timer = setInterval(spin, 90);
+    return () => clearInterval(timer);
+  }, [tumbling]);
 
   // ---------- Live updates ----------
 
@@ -335,7 +370,14 @@ export function CrapsTableView({ initialView }: { initialView: CrapsView }) {
 
   function roll() {
     if (!canRoll) return;
-    apply(crapsRollAction(tableId));
+    // Start the dice moving right away; they land when the result arrives.
+    if (!prefersReducedMotion()) startTumble();
+    startTransition(async () => {
+      const result = await crapsRollAction(tableId);
+      accept(result.view);
+      setError(result.ok ? null : (result.error ?? "Something went wrong."));
+      if (!result.ok) land(false);
+    });
   }
 
   /** The most odds this bet can still take. */
@@ -452,10 +494,15 @@ export function CrapsTableView({ initialView }: { initialView: CrapsView }) {
       <section aria-label="Dice" className="pixel-panel flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5">
         <div className="flex items-center gap-4">
           <div className="flex gap-2">
-            {last ? (
+            {tumbling ? (
               <>
-                <Die value={last.dice[0]} size="3.25rem" tumbling={tumbling} />
-                <Die value={last.dice[1]} size="3.25rem" tumbling={tumbling} delay={60} />
+                <Die value={faces[0]} size="3.25rem" tumbling />
+                <Die value={faces[1]} size="3.25rem" tumbling delay={60} />
+              </>
+            ) : last ? (
+              <>
+                <Die value={last.dice[0]} size="3.25rem" />
+                <Die value={last.dice[1]} size="3.25rem" />
               </>
             ) : (
               <>
