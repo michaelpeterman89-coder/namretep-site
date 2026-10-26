@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/avatar";
+import { GuideLink } from "@/components/guide-link";
 import { Burst } from "@/components/burst";
 import { cardLabel } from "@/components/playing-card";
 import { TickingNumber } from "@/components/ticking-number";
@@ -493,9 +494,12 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
       {/* Table info */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1.5">
-          <h1 className="font-display text-base text-starlight sm:text-lg">{table.name}</h1>
+          <div className="flex flex-wrap items-baseline gap-3">
+            <h1 className="font-display text-base text-starlight sm:text-lg">{table.name}</h1>
+            <GuideLink game="blackjack" />
+          </div>
           <p className="text-sm text-starlight/70">
-            <span className="font-display text-[0.6rem] text-neon-cyan">{rulesSummary(rules)}</span>
+            <span className="font-display text-[0.6rem] text-neon-magenta">{rulesSummary(rules)}</span>
             {" · "}House edge ≈ {houseEdge(rules).toFixed(2)}% · Bets {formatChips(table.minBet)}–
             {formatChips(table.maxBet)}
           </p>

@@ -228,6 +228,7 @@ describe("house edges, 8 decks (exact)", () => {
     ["Dragon 7 (40:1)", () => classic.dragon7, 7.61],
     ["Panda 8 (25:1)", () => classic.panda8, 10.19],
     ["Player Pair (11:1)", () => classic.playerPair, 10.36],
+    ["Either Pair (5:1)", () => classic.eitherPair, 13.71],
     ["Dragon Bonus on Player", () => classic.dragonPlayer, 2.65],
     ["Dragon Bonus on Banker", () => classic.dragonBanker, 9.37],
     ["Big (0.54:1)", () => classic.big, 4.35],

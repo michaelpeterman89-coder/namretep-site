@@ -10,3 +10,12 @@ export function NewTableButton({ game, label }: { game: GameKey; label?: string 
     </Link>
   );
 }
+
+/** "How to play" for a game's page, next to its New table button. */
+export function HowToPlayButton({ game }: { game: GameKey }) {
+  return (
+    <Link href={`/how-to-play${GAMES[game].path}`} className="pixel-btn bg-space-800 text-starlight">
+      How to play
+    </Link>
+  );
+}

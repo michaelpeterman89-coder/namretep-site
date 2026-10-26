@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/avatar";
+import { GuideLink } from "@/components/guide-link";
 import { ChipStack } from "@/components/chip";
 import { DealContext, DealtCard, EMPTY_PLAN, prefersReducedMotion, Shoe, type DealPlan } from "@/components/card-table/dealing";
 import { cardLabel } from "@/components/playing-card";
@@ -323,9 +324,12 @@ export function PokerTableView({ initialView }: { initialView: PokerView }) {
       {/* Table info */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1.5">
-          <h1 className="font-display text-base text-starlight sm:text-lg">{table.name}</h1>
+          <div className="flex flex-wrap items-baseline gap-3">
+            <h1 className="font-display text-base text-starlight sm:text-lg">{table.name}</h1>
+            <GuideLink game="holdem" />
+          </div>
           <p className="text-sm text-starlight/70">
-            <span className="font-display text-[0.6rem] text-neon-magenta">{pokerSummary(table.rules)}</span>
+            <span className="font-display text-[0.6rem] text-neon-gold">{pokerSummary(table.rules)}</span>
             {" · "}Buy-in {formatChips(table.rules.minBuyIn)}–{formatChips(table.rules.maxBuyIn)}
           </p>
         </div>

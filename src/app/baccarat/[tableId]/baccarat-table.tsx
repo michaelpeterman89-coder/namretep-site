@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/avatar";
+import { GuideLink } from "@/components/guide-link";
 import {
   DealContext,
   DealtCard,
@@ -467,7 +468,10 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
       {/* Table info */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1.5">
-          <h1 className="font-display text-base text-starlight sm:text-lg">{table.name}</h1>
+          <div className="flex flex-wrap items-baseline gap-3">
+            <h1 className="font-display text-base text-starlight sm:text-lg">{table.name}</h1>
+            <GuideLink game="baccarat" />
+          </div>
           <p className="text-sm text-starlight/70">
             <span className="font-display text-[0.6rem] text-neon-lime">{baccaratSummary(r)}</span>
             {" · "}Bets {formatChips(table.minBet)}–{formatChips(table.maxBet)}

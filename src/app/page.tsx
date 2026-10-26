@@ -70,6 +70,13 @@ export default function Home() {
             </li>
           ))}
         </ul>
+        <p className="text-sm text-starlight/70">
+          New here?{" "}
+          <Link href="/how-to-play" className="text-neon-cyan underline underline-offset-4">
+            Learn how to play every game
+          </Link>
+          .
+        </p>
       </section>
     </div>
   );

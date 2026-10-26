@@ -16,3 +16,15 @@ export const gameName = (game: string) => (game in GAMES ? GAMES[game as GameKey
 /** Link to a table's page. */
 export const tablePath = (game: string, tableId: string) =>
   `${game in GAMES ? GAMES[game as GameKey].path : "/blackjack"}/${tableId}`;
+
+/** Games we plan to add (shown as "coming later" until they're built). */
+export const PLANNED_GAMES = [
+  { name: "Roulette", note: "American, European, and French (la partage) wheels." },
+  { name: "Video Poker", note: "Jacks or Better and friends, with real pay tables like 9/6." },
+  { name: "More poker", note: "Omaha and Seven-Card Stud, as choices when you create a poker table." },
+] as const;
+
+/** The game whose pages live at `/${slug}` (e.g. "poker" → holdem), if any. */
+export function gameBySlug(slug: string): GameKey | null {
+  return (Object.keys(GAMES) as GameKey[]).find((k) => GAMES[k].path === `/${slug}`) ?? null;
+}

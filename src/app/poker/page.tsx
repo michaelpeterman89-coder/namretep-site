@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { GameTables } from "@/components/game-tables";
-import { NewTableButton } from "@/components/new-table-button";
+import { HowToPlayButton, NewTableButton } from "@/components/new-table-button";
 
 export const metadata: Metadata = { title: "Texas Hold'em · Namretep" };
 
@@ -12,7 +12,10 @@ export default function PokerHome() {
         <h1 className="font-display text-lg text-starlight drop-shadow-[3px_3px_0_var(--color-ink)]">
           Texas Hold&apos;em
         </h1>
-        <NewTableButton game="holdem" />
+        <div className="flex flex-wrap gap-3">
+          <HowToPlayButton game="holdem" />
+          <NewTableButton game="holdem" />
+        </div>
       </div>
       <Suspense fallback={<div className="pixel-panel h-40 animate-pulse" />}>
         <GameTables game="holdem" />

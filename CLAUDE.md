@@ -103,6 +103,10 @@ Each table shows a short **rules summary** (e.g. "6D · S17 · 3:2 · DAS · LS"
 
 ---
 
+## Adding a game
+
+Every game is listed once in `src/lib/games/catalog.ts` (name, page path, and its color for buttons and labels). A new game also needs a How to Play guide in `src/app/how-to-play/guides/` registered in `guides/index.ts` — the build fails without one, and the guide page, overview card, and links then appear automatically. Remove the game from `PLANNED_GAMES` when it launches.
+
 ## Future games (build after Blackjack is solid)
 Design the table/config/stats system so new games plug in without rewrites. Planned:
 - Roulette (American / European / French, la partage)
