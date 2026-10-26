@@ -5,6 +5,7 @@ export const GAMES = {
   blackjack: { name: "Blackjack", short: "blackjack", path: "/blackjack", button: "bg-neon-magenta text-ink", text: "text-neon-magenta" },
   holdem: { name: "Texas Hold'em", short: "poker", path: "/poker", button: "bg-neon-gold text-ink", text: "text-neon-gold" },
   craps: { name: "Craps", short: "craps", path: "/craps", button: "bg-neon-cyan text-ink", text: "text-neon-cyan" },
+  baccarat: { name: "Baccarat", short: "baccarat", path: "/baccarat", button: "bg-neon-lime text-ink", text: "text-neon-lime" },
 } as const;
 
 export type GameKey = keyof typeof GAMES;

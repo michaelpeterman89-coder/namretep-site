@@ -1,10 +1,12 @@
 import "server-only";
 import { parseRules, type BlackjackRules, type SeatState } from "@/lib/games/blackjack";
+import { parseBaccaratRules, type BaccaratRules } from "@/lib/games/baccarat/rules";
 import { parseCrapsRules, type CrapsRules } from "@/lib/games/craps/rules";
 import { parsePokerRules, type PokerTableRules } from "@/lib/games/poker/table-rules";
 import type { AvatarId } from "@/lib/avatars";
 import { secureRandomInt } from "@/lib/random";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { returnAllBaccaratBets } from "./baccarat";
 import { returnAllCrapsBets } from "./craps";
 
 // Tables, seats, and who may see them. All writes use the secret-key client,
@@ -35,8 +37,9 @@ type TableBase = {
 export type BlackjackTable = TableBase & { game: "blackjack"; rules: BlackjackRules };
 export type PokerTable = TableBase & { game: "holdem"; rules: PokerTableRules };
 export type CrapsTable = TableBase & { game: "craps"; rules: CrapsRules };
+export type BaccaratTable = TableBase & { game: "baccarat"; rules: BaccaratRules };
 /** Each game keeps its own rules; check `game` before using them. */
-export type GameTable = BlackjackTable | PokerTable | CrapsTable;
+export type GameTable = BlackjackTable | PokerTable | CrapsTable | BaccaratTable;
 export type GameId = GameTable["game"];
 
 /** Bots don't have accounts; they're identified as "bot:<name>". */
@@ -85,6 +88,11 @@ function toTable(row: TableRow): GameTable {
     status: row.status,
     bettingDeadline: row.betting_deadline_at ? new Date(row.betting_deadline_at) : null,
   };
+  if (row.game === "baccarat") {
+    const baccarat = parseBaccaratRules(row.rules);
+    if (!baccarat.ok) throw new Error(`Table ${row.id} has invalid baccarat rules: ${baccarat.error}`);
+    return { ...base, game: "baccarat", rules: baccarat.rules };
+  }
   if (row.game === "craps") {
     const craps = parseCrapsRules(row.rules);
     if (!craps.ok) throw new Error(`Table ${row.id} has invalid craps rules: ${craps.error}`);
@@ -215,6 +223,12 @@ export async function getPokerTable(tableId: string): Promise<PokerTable | null>
 export async function getCrapsTable(tableId: string): Promise<CrapsTable | null> {
   const table = await getTable(tableId);
   return table?.game === "craps" ? table : null;
+}
+
+/** The table if it's a baccarat table, else null. */
+export async function getBaccaratTable(tableId: string): Promise<BaccaratTable | null> {
+  const table = await getTable(tableId);
+  return table?.game === "baccarat" ? table : null;
 }
 
 /** Public tables, your own, ones you were invited to, and ones you sit at. */
@@ -367,7 +381,7 @@ export async function closeTable(table: GameTable, playerId: string, roundInProg
   await shutTable(table, roundInProgress);
 }
 
-/** Closes a table between hands, cashing out poker players and returning craps bets. Callers check who may do it. */
+/** Closes a table between hands, cashing out poker players and returning craps and baccarat bets. Callers check who may do it. */
 export async function shutTable(table: GameTable, roundInProgress: boolean) {
   if (roundInProgress) throw new GameError("Wait for the current hand to finish first.");
   const admin = createAdminClient();
@@ -380,6 +394,7 @@ export async function shutTable(table: GameTable, roundInProgress: boolean) {
     }
   }
   if (table.game === "craps") await returnAllCrapsBets(table.id);
+  if (table.game === "baccarat") await returnAllBaccaratBets(table.id);
   const { error } = await admin
     .from("game_tables")
     .update({ status: "closed", closed_at: new Date().toISOString(), last_activity_at: new Date().toISOString() })

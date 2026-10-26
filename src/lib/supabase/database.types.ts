@@ -91,6 +91,96 @@ export type Database = {
           },
         ]
       }
+      baccarat_games: {
+        Row: {
+          deal_at: string | null
+          state: Json
+          table_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          deal_at?: string | null
+          state: Json
+          table_id: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          deal_at?: string | null
+          state?: Json
+          table_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "baccarat_games_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: true
+            referencedRelation: "game_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      baccarat_hands: {
+        Row: {
+          banker_cards: Json
+          created_at: string
+          id: number
+          player_cards: Json
+          table_id: string
+          winner: string
+        }
+        Insert: {
+          banker_cards: Json
+          created_at?: string
+          id?: never
+          player_cards: Json
+          table_id: string
+          winner: string
+        }
+        Update: {
+          banker_cards?: Json
+          created_at?: string
+          id?: never
+          player_cards?: Json
+          table_id?: string
+          winner?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "baccarat_hands_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "game_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      baccarat_shoes: {
+        Row: {
+          cards: Json
+          table_id: string
+        }
+        Insert: {
+          cards: Json
+          table_id: string
+        }
+        Update: {
+          cards?: Json
+          table_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "baccarat_shoes_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: true
+            referencedRelation: "game_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blackjack_decisions: {
         Row: {
           action: string
@@ -728,6 +818,19 @@ export type Database = {
         Returns: undefined
       }
       assert_admin: { Args: { p_admin: string }; Returns: undefined }
+      baccarat_save: {
+        Args: {
+          p_chips: Json
+          p_deal_at: string
+          p_hand: Json
+          p_shoe: Json
+          p_state: Json
+          p_stats: Json
+          p_table_id: string
+          p_version: number
+        }
+        Returns: number
+      }
       bj_act: {
         Args: {
           p_actor: string

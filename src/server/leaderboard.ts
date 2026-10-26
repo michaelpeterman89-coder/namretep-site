@@ -37,12 +37,14 @@ export type SiteTotals = {
   adminTaken: number;
   blackjackWagered: number;
   crapsWagered: number;
+  baccaratWagered: number;
   /** Everyone's game profit added up: negative means the house and bots are ahead. */
   playersNet: number;
   activePlayers: number;
   blackjackRounds: number;
   pokerHands: number;
   crapsRolls: number;
+  baccaratHands: number;
   chipsInPlay: number;
 };
 
@@ -107,11 +109,13 @@ export async function getLeaderboard(period: Period): Promise<Leaderboard> {
       adminTaken: num(t.admin_taken),
       blackjackWagered: num(t.blackjack_wagered),
       crapsWagered: num(t.craps_wagered),
+      baccaratWagered: num(t.baccarat_wagered),
       playersNet: num(t.players_net),
       activePlayers: num(t.active_players),
       blackjackRounds: num(t.blackjack_rounds),
       pokerHands: num(t.poker_hands),
       crapsRolls: num(t.craps_rolls),
+      baccaratHands: num(t.baccarat_hands),
       chipsInPlay: num(t.chips_in_play),
     },
     records: {

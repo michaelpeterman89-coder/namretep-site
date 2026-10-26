@@ -113,7 +113,8 @@ async function mutate(
       p_version: game.version,
       p_state: change.state as unknown as Json,
       p_shooter: (change.shooterId === undefined ? game.shooterId : change.shooterId) as string,
-      p_roll_at: (change.rollAt === undefined ? game.rollAt : change.rollAt)?.toISOString() as string,
+      // Explicit null (not undefined) so "no time set" still reaches the database.
+      p_roll_at: ((change.rollAt === undefined ? game.rollAt : change.rollAt)?.toISOString() ?? null) as string,
       p_last_roll: (change.lastRoll ?? null) as unknown as Json,
       p_chips: (change.chips ?? []).filter((c) => c.amount !== 0) as unknown as Json,
       p_roll: (change.roll ?? null) as unknown as Json,
