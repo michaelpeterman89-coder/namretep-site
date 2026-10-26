@@ -3,7 +3,7 @@ import Link from "next/link";
 const games: { name: string; status: string; accent: string; href?: string }[] = [
   { name: "Blackjack", status: "Play now", accent: "text-neon-cyan", href: "/blackjack" },
   { name: "Roulette", status: "Later", accent: "text-starlight/70" },
-  { name: "Craps", status: "Later", accent: "text-starlight/70" },
+  { name: "Craps", status: "Play now", accent: "text-neon-magenta", href: "/craps" },
   { name: "Baccarat", status: "Later", accent: "text-starlight/70" },
   { name: "Texas Hold'em", status: "Play now", accent: "text-neon-gold", href: "/poker" },
   { name: "Video Poker", status: "Later", accent: "text-starlight/70" },

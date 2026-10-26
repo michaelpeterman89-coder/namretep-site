@@ -11,6 +11,7 @@ const FILTERS = [
   { key: "all", label: "All games" },
   { key: "blackjack", label: "Blackjack" },
   { key: "holdem", label: "Texas Hold'em" },
+  { key: "craps", label: "Craps" },
   { key: "mine", label: "My tables" },
 ] as const;
 type Filter = (typeof FILTERS)[number]["key"];
@@ -28,6 +29,9 @@ export default function TablesPage({ searchParams }: PageProps<"/tables">) {
           </Link>
           <Link href="/poker/new" className="pixel-btn bg-neon-gold text-ink">
             New poker table
+          </Link>
+          <Link href="/craps/new" className="pixel-btn bg-neon-cyan text-ink">
+            New craps table
           </Link>
         </div>
       </div>
@@ -82,14 +86,19 @@ async function FilteredTables({ searchParams }: { searchParams: PageProps<"/tabl
               : "No tables are open right now. Start one and others can join you."}
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            {filter !== "holdem" && (
+            {(filter === "all" || filter === "mine" || filter === "blackjack") && (
               <Link href="/blackjack/new" className="pixel-btn bg-neon-cyan text-ink">
                 Blackjack table
               </Link>
             )}
-            {filter !== "blackjack" && (
+            {(filter === "all" || filter === "mine" || filter === "holdem") && (
               <Link href="/poker/new" className="pixel-btn bg-neon-gold text-ink">
                 Poker table
+              </Link>
+            )}
+            {(filter === "all" || filter === "mine" || filter === "craps") && (
+              <Link href="/craps/new" className="pixel-btn bg-neon-magenta text-ink">
+                Craps table
               </Link>
             )}
           </div>

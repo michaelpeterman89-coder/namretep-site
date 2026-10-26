@@ -666,6 +666,124 @@ button:focus-visible > .chip {
   }
 }
 
+/* ---------- Craps ---------- */
+
+/* The craps layout: the same felt as the other tables, in a rounded rectangle. */
+.craps-felt {
+  border: 4px solid var(--color-ink);
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(circle at 20% 30%, rgb(255 255 255 / 0.07) 1px, transparent 1.5px) 0 0 / 22px 22px,
+    radial-gradient(ellipse at 50% 40%, #3a2a9a 0%, #241b6b 55%, #120e3d 100%);
+  box-shadow:
+    inset 0 0 0 3px rgb(62 240 255 / 0.15),
+    0 0 0 8px #3b2470,
+    0 0 0 11px var(--color-ink);
+}
+
+/* A printed betting area on the felt. */
+.craps-spot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-height: 3.25rem;
+  padding: 0.35rem 0.4rem;
+  border: 2px solid rgb(236 232 255 / 0.55);
+  border-radius: 0.5rem;
+  color: var(--color-starlight);
+  text-align: center;
+  transition: background-color 120ms, border-color 120ms;
+}
+
+.craps-spot:hover:not(:disabled) {
+  background: rgb(62 240 255 / 0.1);
+  border-color: var(--color-neon-cyan);
+}
+
+.craps-spot:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.craps-spot:focus-visible {
+  outline: 3px solid var(--color-neon-cyan);
+  outline-offset: 2px;
+}
+
+/* A bet that just won glows gold for a moment. */
+.craps-spot-won {
+  animation: craps-won 1.6s ease-out;
+}
+
+@keyframes craps-won {
+  0%,
+  60% {
+    background: rgb(255 207 62 / 0.3);
+    border-color: var(--color-neon-gold);
+    box-shadow: 0 0 18px rgb(255 207 62 / 0.6);
+  }
+}
+
+/* The ON puck on the point number. */
+.craps-puck {
+  position: absolute;
+  top: -0.6rem;
+  right: -0.45rem;
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 2px solid var(--color-ink);
+  border-radius: 9999px;
+  background: #fbf7ef;
+  color: var(--color-ink);
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  box-shadow: 2px 2px 0 var(--color-ink);
+}
+
+/* A pixel die: a 3x3 grid of pips. */
+.die {
+  display: grid;
+  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  width: var(--die-size, 3rem);
+  height: var(--die-size, 3rem);
+  /* Border, padding, and shadow scale with the die so small dice keep room for pips. */
+  padding: calc(var(--die-size, 3rem) * 0.1);
+  border: max(1.5px, calc(var(--die-size, 3rem) * 0.06)) solid var(--color-ink);
+  border-radius: 20%;
+  background: #fbf7ef;
+  box-shadow: max(1px, calc(var(--die-size, 3rem) * 0.06)) max(1px, calc(var(--die-size, 3rem) * 0.06)) 0 var(--color-ink);
+}
+
+.die > span {
+  margin: 6%;
+  border-radius: 25%;
+}
+
+.die > span.pip {
+  background: var(--color-neon-magenta);
+}
+
+.die-tumble {
+  animation: die-tumble 0.9s cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+
+@keyframes die-tumble {
+  0% {
+    transform: translate(-60px, -40px) rotate(-200deg) scale(0.7);
+  }
+  45% {
+    transform: translate(10px, 8px) rotate(40deg);
+  }
+  70% {
+    transform: translate(-4px, -6px) rotate(-12deg);
+  }
+}
+
 /* ---------- Reduced motion ---------- */
 
 @media (prefers-reduced-motion: reduce) {
