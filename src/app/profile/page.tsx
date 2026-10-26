@@ -6,6 +6,7 @@ import { LocalTime } from "@/components/local-time";
 import { requirePlayer } from "@/lib/auth";
 import { REFILL_LOW_THRESHOLD, formatChips, getRefillStatus } from "@/lib/chips";
 import { BlackjackStats } from "./blackjack-stats";
+import { CrapsStats } from "./craps-stats";
 import { PokerStats } from "./poker-stats";
 import { EditProfileForm, RefillForm, ResetStatsForms } from "./profile-forms";
 
@@ -56,6 +57,10 @@ async function ProfileContent({ searchParams }: { searchParams: PageProps<"/prof
 
       <Suspense fallback={<div className="pixel-panel h-48 animate-pulse" />}>
         <PokerStats />
+      </Suspense>
+
+      <Suspense fallback={<div className="pixel-panel h-48 animate-pulse" />}>
+        <CrapsStats />
       </Suspense>
 
       <section aria-labelledby="edit-heading" className="pixel-panel flex flex-col gap-6 p-6 sm:p-8">

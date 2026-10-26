@@ -63,6 +63,7 @@ export function EditProfileForm({ username, avatar }: { username: string; avatar
 const RESET_CHOICES = [
   { game: "blackjack", label: "Clear blackjack stats", what: "your blackjack stats, On Book %, and missed plays" },
   { game: "holdem", label: "Clear poker stats", what: "your Texas Hold'em stats" },
+  { game: "craps", label: "Clear craps stats", what: "your craps stats" },
   { game: "all", label: "Clear all stats", what: "all of your stats for every game" },
 ] as const;
 

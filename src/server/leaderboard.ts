@@ -36,11 +36,13 @@ export type SiteTotals = {
   adminGiven: number;
   adminTaken: number;
   blackjackWagered: number;
+  crapsWagered: number;
   /** Everyone's game profit added up: negative means the house and bots are ahead. */
   playersNet: number;
   activePlayers: number;
   blackjackRounds: number;
   pokerHands: number;
+  crapsRolls: number;
   chipsInPlay: number;
 };
 
@@ -49,6 +51,8 @@ export type Records = {
   biggestWin: RecordHolder;
   biggestLoss: RecordHolder;
   mostHands: RecordHolder;
+  /** Most rolls one shooter made before sevening out. */
+  longestRoll: RecordHolder;
   bestOnBook: { username: string; percent: number; decisions: number } | null;
 };
 
@@ -69,6 +73,7 @@ type Raw = {
     biggest_win: { username: string; amount: number; game: string } | null;
     biggest_loss: { username: string; amount: number; game: string } | null;
     most_hands: { username: string; amount: number } | null;
+    longest_roll: { username: string; amount: number } | null;
     best_on_book: { username: string; percent: number; decisions: number } | null;
   };
 };
@@ -101,16 +106,19 @@ export async function getLeaderboard(period: Period): Promise<Leaderboard> {
       adminGiven: num(t.admin_given),
       adminTaken: num(t.admin_taken),
       blackjackWagered: num(t.blackjack_wagered),
+      crapsWagered: num(t.craps_wagered),
       playersNet: num(t.players_net),
       activePlayers: num(t.active_players),
       blackjackRounds: num(t.blackjack_rounds),
       pokerHands: num(t.poker_hands),
+      crapsRolls: num(t.craps_rolls),
       chipsInPlay: num(t.chips_in_play),
     },
     records: {
       biggestWin: record(raw.records.biggest_win),
       biggestLoss: record(raw.records.biggest_loss),
       mostHands: record(raw.records.most_hands),
+      longestRoll: record(raw.records.longest_roll),
       bestOnBook: raw.records.best_on_book && {
         username: raw.records.best_on_book.username,
         percent: num(raw.records.best_on_book.percent),

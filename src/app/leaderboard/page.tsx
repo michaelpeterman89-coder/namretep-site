@@ -164,6 +164,7 @@ async function Board({ searchParams }: { searchParams: Search }) {
           <Tile label="Taken by admins" value={formatChips(t.adminTaken)} />
           <Tile label="Chips in play" value={formatChips(t.chipsInPlay)} note="Right now" />
           <Tile label="Blackjack chips bet" value={formatChips(t.blackjackWagered)} />
+          <Tile label="Craps chips bet" value={formatChips(t.crapsWagered)} />
           <Tile
             label="House & bots"
             value={signed(-t.playersNet)}
@@ -171,9 +172,9 @@ async function Board({ searchParams }: { searchParams: Search }) {
           />
           <Tile label="Players at the tables" value={formatChips(t.activePlayers)} />
           <Tile
-            label="Hands played"
-            value={formatChips(t.blackjackRounds + t.pokerHands)}
-            note={`${formatChips(t.blackjackRounds)} blackjack · ${formatChips(t.pokerHands)} poker`}
+            label="Hands & rolls"
+            value={formatChips(t.blackjackRounds + t.pokerHands + t.crapsRolls)}
+            note={`${formatChips(t.blackjackRounds)} blackjack · ${formatChips(t.pokerHands)} poker · ${formatChips(t.crapsRolls)} craps rolls`}
           />
         </div>
       </section>
@@ -195,9 +196,14 @@ async function Board({ searchParams }: { searchParams: Search }) {
             note={r.biggestLoss ? `${r.biggestLoss.username} · ${gameName(r.biggestLoss.game ?? "")}` : "Nobody yet"}
           />
           <Tile
-            label="Most hands played"
+            label="Most hands & rolls"
             value={r.mostHands ? formatChips(r.mostHands.amount) : "—"}
             note={r.mostHands?.username ?? "Nobody yet"}
+          />
+          <Tile
+            label="Longest craps roll"
+            value={r.longestRoll ? `${formatChips(r.longestRoll.amount)} rolls` : "—"}
+            note={r.longestRoll ? `${r.longestRoll.username}, in one turn with the dice` : "Nobody yet"}
           />
           <Tile
             label="Best On Book %"

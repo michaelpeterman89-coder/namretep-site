@@ -61,7 +61,8 @@ export async function claimRefill(): Promise<ActionState> {
 const STAT_GAMES = {
   blackjack: { games: ["blackjack"], label: "Blackjack" },
   holdem: { games: ["holdem"], label: "Texas Hold'em" },
-  all: { games: ["blackjack", "holdem"], label: "All" },
+  craps: { games: ["craps"], label: "Craps" },
+  all: { games: ["blackjack", "holdem", "craps"], label: "All" },
 } as const;
 
 /**
@@ -79,7 +80,7 @@ export async function resetStats(_prev: ActionState, formData: FormData): Promis
   // limited to this player's rows.
   const admin = createAdminClient();
   const stats = await admin.from("player_game_stats").delete().eq("player_id", player.id).in("game", games);
-  const decisions = choice !== "holdem"
+  const decisions = choice === "blackjack" || choice === "all"
     ? await admin.from("blackjack_decisions").delete().eq("player_id", player.id)
     : { error: null };
   if (stats.error || decisions.error) {
