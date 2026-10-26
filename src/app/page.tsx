@@ -5,7 +5,7 @@ const games: { name: string; status: string; accent: string; border?: string; hr
   { name: "Blackjack", status: "Play now", accent: "text-neon-magenta", border: "border-neon-magenta hover:bg-neon-magenta/10", href: "/blackjack" },
   { name: "Roulette", status: "Later", accent: "text-starlight/70" },
   { name: "Craps", status: "Play now", accent: "text-neon-cyan", border: "border-neon-cyan hover:bg-neon-cyan/10", href: "/craps" },
-  { name: "Baccarat", status: "Later", accent: "text-starlight/70" },
+  { name: "Baccarat", status: "Play now", accent: "text-neon-lime", border: "border-neon-lime hover:bg-neon-lime/10", href: "/baccarat" },
   { name: "Texas Hold'em", status: "Play now", accent: "text-neon-gold", border: "border-neon-gold hover:bg-neon-gold/10", href: "/poker" },
   { name: "Video Poker", status: "Later", accent: "text-starlight/70" },
 ];

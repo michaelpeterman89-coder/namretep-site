@@ -62,7 +62,8 @@ const STAT_GAMES = {
   blackjack: { games: ["blackjack"], label: "Blackjack" },
   holdem: { games: ["holdem"], label: "Texas Hold'em" },
   craps: { games: ["craps"], label: "Craps" },
-  all: { games: ["blackjack", "holdem", "craps"], label: "All" },
+  baccarat: { games: ["baccarat"], label: "Baccarat" },
+  all: { games: ["blackjack", "holdem", "craps", "baccarat"], label: "All" },
 } as const;
 
 /**

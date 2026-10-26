@@ -14,6 +14,7 @@ const FILTERS = [
   { key: "blackjack", label: "Blackjack" },
   { key: "holdem", label: "Texas Hold'em" },
   { key: "craps", label: "Craps" },
+  { key: "baccarat", label: "Baccarat" },
   { key: "mine", label: "My tables" },
 ] as const;
 type Filter = (typeof FILTERS)[number]["key"];
@@ -29,6 +30,7 @@ export default function TablesPage({ searchParams }: PageProps<"/tables">) {
           <NewTableButton game="blackjack" />
           <NewTableButton game="holdem" />
           <NewTableButton game="craps" />
+          <NewTableButton game="baccarat" />
         </div>
       </div>
       <Suspense fallback={<div className="pixel-panel h-40 animate-pulse" />}>
@@ -82,7 +84,7 @@ async function FilteredTables({ searchParams }: { searchParams: PageProps<"/tabl
               : "No tables are open right now. Start one and others can join you."}
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            {(["blackjack", "holdem", "craps"] as const)
+            {(["blackjack", "holdem", "craps", "baccarat"] as const)
               .filter((g) => filter === "all" || filter === "mine" || filter === g)
               .map((g) => (
                 <NewTableButton key={g} game={g} label={`${GAMES[g].short[0].toUpperCase()}${GAMES[g].short.slice(1)} table`} />

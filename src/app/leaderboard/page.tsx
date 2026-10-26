@@ -165,6 +165,7 @@ async function Board({ searchParams }: { searchParams: Search }) {
           <Tile label="Chips in play" value={formatChips(t.chipsInPlay)} note="Right now" />
           <Tile label="Blackjack chips bet" value={formatChips(t.blackjackWagered)} />
           <Tile label="Craps chips bet" value={formatChips(t.crapsWagered)} />
+          <Tile label="Baccarat chips bet" value={formatChips(t.baccaratWagered)} />
           <Tile
             label="House & bots"
             value={signed(-t.playersNet)}
@@ -173,8 +174,8 @@ async function Board({ searchParams }: { searchParams: Search }) {
           <Tile label="Players at the tables" value={formatChips(t.activePlayers)} />
           <Tile
             label="Hands & rolls"
-            value={formatChips(t.blackjackRounds + t.pokerHands + t.crapsRolls)}
-            note={`${formatChips(t.blackjackRounds)} blackjack · ${formatChips(t.pokerHands)} poker · ${formatChips(t.crapsRolls)} craps rolls`}
+            value={formatChips(t.blackjackRounds + t.pokerHands + t.crapsRolls + t.baccaratHands)}
+            note={`${formatChips(t.blackjackRounds)} blackjack · ${formatChips(t.pokerHands)} poker · ${formatChips(t.crapsRolls)} craps rolls · ${formatChips(t.baccaratHands)} baccarat`}
           />
         </div>
       </section>

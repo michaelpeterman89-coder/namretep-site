@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatChips } from "@/lib/chips";
 import { houseEdge, rulesSummary } from "@/lib/games/blackjack/rules";
 import { GAMES, tablePath } from "@/lib/games/catalog";
+import { baccaratSummary, bankerEdge } from "@/lib/games/baccarat/rules";
 import { crapsSummary, passLineEdge } from "@/lib/games/craps/rules";
 import { pokerSummary } from "@/lib/games/poker/table-rules";
 import type { TableListing } from "@/server/tables";
@@ -30,6 +31,13 @@ export function TableList({ tables }: { tables: TableListing[] }) {
                   <span className="text-sm text-starlight/70">
                     Buy-in {formatChips(t.rules.minBuyIn)}–{formatChips(t.rules.maxBuyIn)}
                     {t.rules.bots > 0 && ` · ${t.rules.bots} bot${t.rules.bots > 1 ? "s" : ""}`}
+                  </span>
+                </>
+              ) : t.game === "baccarat" ? (
+                <>
+                  <span className={`font-display text-[0.6rem] ${GAMES.baccarat.text}`}>{baccaratSummary(t.rules)}</span>
+                  <span className="text-sm text-starlight/70">
+                    Bets {formatChips(t.minBet)}–{formatChips(t.maxBet)} · Banker edge {bankerEdge(t.rules)}%
                   </span>
                 </>
               ) : t.game === "craps" ? (
