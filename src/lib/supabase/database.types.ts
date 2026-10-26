@@ -671,6 +671,8 @@ export type Database = {
       claim_daily_refill: { Args: never; Returns: number }
       close_idle_tables: { Args: never; Returns: number }
       jsonb_add_counters: { Args: { a: Json; b: Json }; Returns: Json }
+      leaderboard: { Args: { p_period: string }; Returns: Json }
+      leaderboard_since: { Args: { p_period: string }; Returns: string }
       my_book_summary: {
         Args: { p_rules_key?: string }
         Returns: {

@@ -22,9 +22,12 @@ export async function HeaderAccount() {
   }
 
   return (
-    <nav className="flex items-center gap-2 sm:gap-3">
+    <nav className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
       <Link href="/tables" className="font-display text-[0.65rem] text-neon-cyan hover:text-starlight">
         Tables
+      </Link>
+      <Link href="/leaderboard" className="font-display text-[0.65rem] text-neon-cyan hover:text-starlight">
+        Leaders
       </Link>
       {player.isAdmin && (
         <Link href="/admin" className="font-display text-[0.65rem] text-neon-gold hover:text-starlight">
