@@ -5,7 +5,7 @@ const games: { name: string; status: string; accent: string; href?: string }[] =
   { name: "Roulette", status: "Later", accent: "text-starlight/70" },
   { name: "Craps", status: "Later", accent: "text-starlight/70" },
   { name: "Baccarat", status: "Later", accent: "text-starlight/70" },
-  { name: "Texas Hold'em", status: "Play now", accent: "text-neon-gold", href: "/lobby" },
+  { name: "Texas Hold'em", status: "Play now", accent: "text-neon-gold", href: "/poker" },
   { name: "Video Poker", status: "Later", accent: "text-starlight/70" },
 ];
 

@@ -254,35 +254,49 @@ function toListing(row: ListingRow): TableListing {
   return { ...toTable(row), seated: row.table_seats[0]?.count ?? 0 };
 }
 
-/** Open tables you own or sit at, most recently active first. */
-export async function listMyTables(playerId: string): Promise<TableListing[]> {
+/** Open tables you own or sit at, most recently active first. Optionally one game only. */
+export async function listMyTables(playerId: string, game?: GameId): Promise<TableListing[]> {
   const admin = createAdminClient();
   const { data: seatRows } = await admin.from("table_seats").select("table_id").eq("player_id", playerId);
   const seatedIds = (seatRows ?? []).map((r) => r.table_id);
   const filter = seatedIds.length > 0 ? `owner_id.eq.${playerId},id.in.(${seatedIds.join(",")})` : `owner_id.eq.${playerId}`;
-  const { data, error } = await admin
+  let query = admin
     .from("game_tables")
     .select(`${TABLE_COLUMNS}, table_seats(count)`)
     .eq("status", "open")
     .or(filter)
     .order("last_activity_at", { ascending: false });
+  if (game) query = query.eq("game", game);
+  const { data, error } = await query;
   if (error) throw friendlyDbError(error);
   return (data as unknown as ListingRow[]).map(toListing);
 }
 
-/** Open public tables for the lobby. Closes idle tables first. */
-export async function listLobbyTables(): Promise<TableListing[]> {
+/** Open public tables anyone can join, optionally one game only. Closes idle tables first. */
+export async function listPublicTables(game?: GameId): Promise<TableListing[]> {
   const admin = createAdminClient();
   await admin.rpc("close_idle_tables");
-  const { data, error } = await admin
+  let query = admin
     .from("game_tables")
     .select(`${TABLE_COLUMNS}, table_seats(count)`)
     .eq("status", "open")
     .eq("visibility", "public")
     .order("last_activity_at", { ascending: false })
     .limit(50);
+  if (game) query = query.eq("game", game);
+  const { data, error } = await query;
   if (error) throw friendlyDbError(error);
   return (data as unknown as ListingRow[]).map(toListing);
+}
+
+/**
+ * Your tables and the public tables, without repeats: your own come first in
+ * `mine`, and `others` holds the public tables you're not already at.
+ */
+export async function listTablesFor(playerId: string, game?: GameId) {
+  const [mine, publicTables] = await Promise.all([listMyTables(playerId, game), listPublicTables(game)]);
+  const mineIds = new Set(mine.map((t) => t.id));
+  return { mine, others: publicTables.filter((t) => !mineIds.has(t.id)) };
 }
 
 // ---------- Joining, seats, and closing ----------

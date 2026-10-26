@@ -36,7 +36,7 @@ export function CreatePokerForm() {
         <label className="flex flex-col gap-1.5">
           <span className="font-display text-[0.65rem] text-neon-cyan">Visibility</span>
           <select name="visibility" className="pixel-input" defaultValue="public">
-            <option value="public">Public (in the lobby)</option>
+            <option value="public">Public (listed on Tables)</option>
             <option value="private">Private (invite only)</option>
           </select>
         </label>

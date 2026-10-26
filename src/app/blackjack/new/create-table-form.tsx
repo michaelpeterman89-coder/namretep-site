@@ -99,7 +99,7 @@ export function CreateTableForm() {
               <span className="font-display text-[0.65rem] text-neon-cyan">Visibility</span>
               <select name="visibility" className="pixel-input" defaultValue="private">
                 <option value="private">Private (invite only)</option>
-                <option value="public">Public (in the lobby)</option>
+                <option value="public">Public (listed on Tables)</option>
               </select>
             </label>
             <Field label="Min bet" name="minBet" type="number" required min={1} defaultValue={10} />
@@ -113,7 +113,7 @@ export function CreateTableForm() {
             min={1}
             max={7}
             defaultValue={1}
-            hint="1 for solo play. With more seats, others can join from the lobby (public) or your invite link (private)."
+            hint="1 for solo play. With more seats, others can join from the Tables page (public) or your invite link (private)."
           />
         </Section>
 

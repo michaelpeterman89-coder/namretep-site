@@ -23,7 +23,7 @@ export async function HeaderAccount() {
 
   return (
     <nav className="flex items-center gap-2 sm:gap-3">
-      <Link href="/blackjack" className="font-display text-[0.65rem] text-neon-cyan hover:text-starlight">
+      <Link href="/tables" className="font-display text-[0.65rem] text-neon-cyan hover:text-starlight">
         Tables
       </Link>
       {player.isAdmin && (

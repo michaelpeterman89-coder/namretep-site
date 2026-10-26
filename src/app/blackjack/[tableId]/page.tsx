@@ -33,7 +33,7 @@ async function TableContent({ params }: { params: Promise<{ tableId: string }> }
       <div className="pixel-panel mx-auto flex max-w-md flex-col items-center gap-4 p-8 text-center">
         <h1 className="font-display text-base text-starlight">{table.name}</h1>
         <p className="text-starlight/70">This table is closed.</p>
-        <Link href="/lobby" className="pixel-btn bg-neon-cyan text-ink">
+        <Link href="/blackjack" className="pixel-btn bg-neon-cyan text-ink">
           Find another table
         </Link>
       </div>

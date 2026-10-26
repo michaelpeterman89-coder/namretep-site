@@ -330,7 +330,7 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
     startTransition(async () => {
       const result = await closeTableAction(tableId);
       if (result.ok) {
-        router.push("/lobby");
+        router.push("/blackjack");
         return;
       }
       accept(result.view);
@@ -481,8 +481,8 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
       <div className="pixel-panel mx-auto flex max-w-md flex-col items-center gap-4 p-8 text-center">
         <h1 className="font-display text-base text-starlight">{table.name}</h1>
         <p className="text-starlight/70">This table was closed by its host.</p>
-        <button type="button" onClick={() => router.push("/lobby")} className="pixel-btn bg-neon-cyan text-ink">
-          Go to the lobby
+        <button type="button" onClick={() => router.push("/blackjack")} className="pixel-btn bg-neon-cyan text-ink">
+          Find another table
         </button>
       </div>
     );

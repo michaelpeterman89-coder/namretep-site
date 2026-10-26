@@ -27,8 +27,8 @@ async function AcceptInvite({ params }: { params: Promise<{ code: string }> }) {
     <div className="pixel-panel mx-auto flex max-w-md flex-col items-center gap-4 p-8 text-center">
       <h1 className="font-display text-base text-starlight">Invite not found</h1>
       <p className="text-starlight/70">This invite link is wrong, or the table has closed.</p>
-      <Link href="/lobby" className="pixel-btn bg-neon-cyan text-ink">
-        Go to the lobby
+      <Link href="/tables" className="pixel-btn bg-neon-cyan text-ink">
+        Find another table
       </Link>
     </div>
   );
