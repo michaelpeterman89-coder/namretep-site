@@ -4,7 +4,7 @@ import { LocalTime } from "@/components/local-time";
 import { requireAdmin } from "@/lib/auth";
 import { listOpenTables } from "@/server/admin";
 import { CloseTableForm } from "../admin-forms";
-import { GAME_NAMES } from "../labels";
+import { gameName, tablePath } from "@/lib/games/catalog";
 
 export default function AdminTablesPage() {
   return (
@@ -33,13 +33,13 @@ async function Tables() {
             <li key={t.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
               <div className="flex min-w-0 flex-col gap-1">
                 <Link
-                  href={`/${t.game === "holdem" ? "poker" : "blackjack"}/${t.id}`}
+                  href={tablePath(t.game, t.id)}
                   className="break-all text-neon-cyan underline underline-offset-4"
                 >
                   {t.name}
                 </Link>
                 <span className="text-sm text-starlight/80">
-                  {GAME_NAMES[t.game]} · {t.visibility === "public" ? "Public" : "Private"} · made by {t.ownerName}
+                  {gameName(t.game)} · {t.visibility === "public" ? "Public" : "Private"} · made by {t.ownerName}
                 </span>
                 <span className="text-sm text-starlight/70">
                   {t.seated} of {t.seats} seats taken{t.bots > 0 && ` + ${t.bots} bot${t.bots === 1 ? "" : "s"}`} · last

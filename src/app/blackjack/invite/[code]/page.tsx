@@ -3,7 +3,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { requirePlayer } from "@/lib/auth";
-import { joinByInvite } from "@/server/tables";
+import { tablePath } from "@/lib/games/catalog";
+import { getTable, joinByInvite } from "@/server/tables";
 
 export const metadata: Metadata = { title: "Table invite · Namretep" };
 
@@ -21,7 +22,10 @@ async function AcceptInvite({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const player = await requirePlayer(`/blackjack/invite/${encodeURIComponent(code)}`);
   const tableId = await joinByInvite(code, player.id);
-  if (tableId) redirect(`/blackjack/${tableId}`);
+  if (tableId) {
+    const table = await getTable(tableId);
+    redirect(tablePath(table?.game ?? "blackjack", tableId));
+  }
 
   return (
     <div className="pixel-panel mx-auto flex max-w-md flex-col items-center gap-4 p-8 text-center">

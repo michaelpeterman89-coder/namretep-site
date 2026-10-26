@@ -6,6 +6,7 @@ import { listTablesFor, type GameId } from "@/server/tables";
 const GAMES: Record<GameId, { name: string; path: string; newLabel: string }> = {
   blackjack: { name: "blackjack", path: "/blackjack", newLabel: "New blackjack table" },
   holdem: { name: "Texas Hold'em", path: "/poker", newLabel: "New poker table" },
+  craps: { name: "craps", path: "/craps", newLabel: "New craps table" },
 };
 
 /** One game's tables: yours first, then public ones you can join. */

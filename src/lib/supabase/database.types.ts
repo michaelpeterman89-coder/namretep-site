@@ -283,6 +283,99 @@ export type Database = {
           },
         ]
       }
+      craps_games: {
+        Row: {
+          last_roll: Json | null
+          roll_at: string | null
+          shooter_id: string | null
+          state: Json
+          table_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          last_roll?: Json | null
+          roll_at?: string | null
+          shooter_id?: string | null
+          state: Json
+          table_id: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          last_roll?: Json | null
+          roll_at?: string | null
+          shooter_id?: string | null
+          state?: Json
+          table_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "craps_games_shooter_id_fkey"
+            columns: ["shooter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "craps_games_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: true
+            referencedRelation: "game_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      craps_rolls: {
+        Row: {
+          created_at: string
+          die1: number
+          die2: number
+          event: string
+          id: number
+          shooter_id: string | null
+          shooter_roll: number
+          table_id: string
+        }
+        Insert: {
+          created_at?: string
+          die1: number
+          die2: number
+          event: string
+          id?: never
+          shooter_id?: string | null
+          shooter_roll: number
+          table_id: string
+        }
+        Update: {
+          created_at?: string
+          die1?: number
+          die2?: number
+          event?: string
+          id?: never
+          shooter_id?: string | null
+          shooter_roll?: number
+          table_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "craps_rolls_shooter_id_fkey"
+            columns: ["shooter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "craps_rolls_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "game_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_tables: {
         Row: {
           betting_deadline_at: string | null
@@ -670,6 +763,20 @@ export type Database = {
       can_view_table: { Args: { p_table_id: string }; Returns: boolean }
       claim_daily_refill: { Args: never; Returns: number }
       close_idle_tables: { Args: never; Returns: number }
+      craps_save: {
+        Args: {
+          p_chips: Json
+          p_last_roll: Json
+          p_roll: Json
+          p_roll_at: string
+          p_shooter: string
+          p_state: Json
+          p_stats: Json
+          p_table_id: string
+          p_version: number
+        }
+        Returns: number
+      }
       jsonb_add_counters: { Args: { a: Json; b: Json }; Returns: Json }
       leaderboard: { Args: { p_period: string }; Returns: Json }
       leaderboard_since: { Args: { p_period: string }; Returns: string }

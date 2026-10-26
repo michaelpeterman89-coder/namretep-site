@@ -5,12 +5,12 @@ import { Avatar } from "@/components/avatar";
 import { signed, Tile } from "@/components/stat-tile";
 import { requirePlayer } from "@/lib/auth";
 import { formatChips } from "@/lib/chips";
+import { gameName } from "@/lib/games/catalog";
 import { getLeaderboard, PERIODS, type LeaderRow, type Period } from "@/server/leaderboard";
 
 export const metadata: Metadata = { title: "Leaderboard · Namretep" };
 
 const SHOWN = 50;
-const GAME_NAMES: Record<string, string> = { blackjack: "blackjack", holdem: "Texas Hold'em" };
 
 type Search = PageProps<"/leaderboard">["searchParams"];
 
@@ -187,12 +187,12 @@ async function Board({ searchParams }: { searchParams: Search }) {
           <Tile
             label="Biggest single win"
             value={r.biggestWin ? formatChips(r.biggestWin.amount) : "—"}
-            note={r.biggestWin ? `${r.biggestWin.username} · ${GAME_NAMES[r.biggestWin.game ?? ""] ?? ""}` : "Nobody yet"}
+            note={r.biggestWin ? `${r.biggestWin.username} · ${gameName(r.biggestWin.game ?? "")}` : "Nobody yet"}
           />
           <Tile
             label="Biggest single loss"
             value={r.biggestLoss ? formatChips(r.biggestLoss.amount) : "—"}
-            note={r.biggestLoss ? `${r.biggestLoss.username} · ${GAME_NAMES[r.biggestLoss.game ?? ""] ?? ""}` : "Nobody yet"}
+            note={r.biggestLoss ? `${r.biggestLoss.username} · ${gameName(r.biggestLoss.game ?? "")}` : "Nobody yet"}
           />
           <Tile
             label="Most hands played"

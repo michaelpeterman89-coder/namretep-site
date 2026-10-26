@@ -11,7 +11,8 @@ import { isId } from "@/server/tables";
 import { AdminLogList } from "../../admin-log-list";
 import { AdjustChipsForm, AdminRoleForm, RenameForm, SuspendForm } from "../../admin-forms";
 import { Badge } from "../../badge";
-import { GAME_NAMES, LEDGER_REASONS } from "../../labels";
+import { gameName, LEDGER_REASONS } from "../../labels";
+import { tablePath } from "@/lib/games/catalog";
 
 export default function AdminPlayerPage({ params }: PageProps<"/admin/players/[playerId]">) {
   return (
@@ -96,7 +97,7 @@ async function PlayerContent({ params }: { params: Promise<{ playerId: string }>
         ) : (
           p.stats.map((s) => (
             <div key={s.game} className="flex flex-col gap-2">
-              <h3 className="text-sm text-neon-gold">{GAME_NAMES[s.game] ?? s.game}</h3>
+              <h3 className="text-sm text-neon-gold">{gameName(s.game)}</h3>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <Tile label={s.game === "holdem" ? "Hands" : "Rounds"} value={formatChips(s.rounds)} />
                 <Tile label="Won" value={formatChips(s.wins)} />
@@ -114,13 +115,13 @@ async function PlayerContent({ params }: { params: Promise<{ playerId: string }>
             {p.seats.map((s) => (
               <li key={s.tableId} className="flex flex-wrap justify-between gap-2">
                 <Link
-                  href={`/${s.game === "holdem" ? "poker" : "blackjack"}/${s.tableId}`}
+                  href={tablePath(s.game, s.tableId)}
                   className="text-neon-cyan underline underline-offset-4"
                 >
                   {s.tableName}
                 </Link>
                 <span className="text-sm text-starlight/70">
-                  {GAME_NAMES[s.game]}
+                  {gameName(s.game)}
                   {s.stack !== null && ` · ${formatChips(s.stack)} chips on the table`}
                 </span>
               </li>

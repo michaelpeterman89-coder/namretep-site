@@ -1,4 +1,5 @@
 import { formatChips } from "@/lib/chips";
+import { gameName } from "@/lib/games/catalog";
 import type { AdminLogLine } from "@/server/admin";
 
 // Plain-English wording for ledger lines and admin log entries.
@@ -17,7 +18,7 @@ export const LEDGER_REASONS: Record<string, string> = {
   admin_adjust: "Admin adjustment",
 };
 
-export const GAME_NAMES: Record<string, string> = { blackjack: "Blackjack", holdem: "Texas Hold'em" };
+export { gameName } from "@/lib/games/catalog";
 
 /** "gave 500 chips (tournament prize)", "suspended the account", … — read after the admin's name. */
 export function describeAdminAction(line: AdminLogLine): string {
@@ -39,7 +40,7 @@ export function describeAdminAction(line: AdminLogLine): string {
     case "rename":
       return `renamed ${String(d.from)} to ${String(d.to)}`;
     case "close_table":
-      return `closed the ${GAME_NAMES[String(d.game)] ?? ""} table “${String(d.name)}”`;
+      return `closed the ${gameName(String(d.game))} table “${String(d.name)}”`;
     default:
       return line.action;
   }

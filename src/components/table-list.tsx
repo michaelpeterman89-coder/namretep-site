@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { formatChips } from "@/lib/chips";
 import { houseEdge, rulesSummary } from "@/lib/games/blackjack/rules";
+import { tablePath } from "@/lib/games/catalog";
+import { crapsSummary, passLineEdge } from "@/lib/games/craps/rules";
 import { pokerSummary } from "@/lib/games/poker/table-rules";
 import type { TableListing } from "@/server/tables";
 
-/** Cards linking to blackjack tables, with rules, bets, and open seats. */
+/** Cards linking to tables, with each game's rules, bets, and open seats. */
 export function TableList({ tables }: { tables: TableListing[] }) {
   return (
     <ul className="grid gap-4 sm:grid-cols-2">
@@ -13,7 +15,7 @@ export function TableList({ tables }: { tables: TableListing[] }) {
         return (
           <li key={t.id}>
             <Link
-              href={`/${t.game === "holdem" ? "poker" : "blackjack"}/${t.id}`}
+              href={tablePath(t.game, t.id)}
               className="pixel-panel flex flex-col gap-2 p-5 transition-transform hover:-translate-y-0.5"
             >
               <span className="flex items-center justify-between gap-2">
@@ -28,6 +30,13 @@ export function TableList({ tables }: { tables: TableListing[] }) {
                   <span className="text-sm text-starlight/70">
                     Buy-in {formatChips(t.rules.minBuyIn)}–{formatChips(t.rules.maxBuyIn)}
                     {t.rules.bots > 0 && ` · ${t.rules.bots} bot${t.rules.bots > 1 ? "s" : ""}`}
+                  </span>
+                </>
+              ) : t.game === "craps" ? (
+                <>
+                  <span className="font-display text-[0.6rem] text-neon-gold">{crapsSummary(t.rules)}</span>
+                  <span className="text-sm text-starlight/70">
+                    Bets {formatChips(t.minBet)}–{formatChips(t.maxBet)} · Pass line edge {passLineEdge(t.rules)}%
                   </span>
                 </>
               ) : (
