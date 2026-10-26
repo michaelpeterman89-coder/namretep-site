@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { formatChips } from "@/lib/chips";
 import { houseEdge, rulesSummary } from "@/lib/games/blackjack/rules";
-import { tablePath } from "@/lib/games/catalog";
+import { GAMES, tablePath } from "@/lib/games/catalog";
 import { crapsSummary, passLineEdge } from "@/lib/games/craps/rules";
 import { pokerSummary } from "@/lib/games/poker/table-rules";
 import type { TableListing } from "@/server/tables";
@@ -26,7 +26,7 @@ export function TableList({ tables }: { tables: TableListing[] }) {
               </span>
               {t.game === "holdem" ? (
                 <>
-                  <span className="font-display text-[0.6rem] text-neon-magenta">{pokerSummary(t.rules)}</span>
+                  <span className={`font-display text-[0.6rem] ${GAMES.holdem.text}`}>{pokerSummary(t.rules)}</span>
                   <span className="text-sm text-starlight/70">
                     Buy-in {formatChips(t.rules.minBuyIn)}–{formatChips(t.rules.maxBuyIn)}
                     {t.rules.bots > 0 && ` · ${t.rules.bots} bot${t.rules.bots > 1 ? "s" : ""}`}
@@ -34,14 +34,14 @@ export function TableList({ tables }: { tables: TableListing[] }) {
                 </>
               ) : t.game === "craps" ? (
                 <>
-                  <span className="font-display text-[0.6rem] text-neon-gold">{crapsSummary(t.rules)}</span>
+                  <span className={`font-display text-[0.6rem] ${GAMES.craps.text}`}>{crapsSummary(t.rules)}</span>
                   <span className="text-sm text-starlight/70">
                     Bets {formatChips(t.minBet)}–{formatChips(t.maxBet)} · Pass line edge {passLineEdge(t.rules)}%
                   </span>
                 </>
               ) : (
                 <>
-                  <span className="font-display text-[0.6rem] text-neon-cyan">Blackjack · {rulesSummary(t.rules)}</span>
+                  <span className={`font-display text-[0.6rem] ${GAMES.blackjack.text}`}>Blackjack · {rulesSummary(t.rules)}</span>
                   <span className="text-sm text-starlight/70">
                     Bets {formatChips(t.minBet)}–{formatChips(t.maxBet)} · House edge ≈ {houseEdge(t.rules).toFixed(2)}%
                   </span>

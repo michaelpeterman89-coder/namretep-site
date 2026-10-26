@@ -1,17 +1,12 @@
-import Link from "next/link";
+import { NewTableButton } from "@/components/new-table-button";
 import { TableList } from "@/components/table-list";
 import { requirePlayer } from "@/lib/auth";
+import { GAMES } from "@/lib/games/catalog";
 import { listTablesFor, type GameId } from "@/server/tables";
-
-const GAMES: Record<GameId, { name: string; path: string; newLabel: string }> = {
-  blackjack: { name: "blackjack", path: "/blackjack", newLabel: "New blackjack table" },
-  holdem: { name: "Texas Hold'em", path: "/poker", newLabel: "New poker table" },
-  craps: { name: "craps", path: "/craps", newLabel: "New craps table" },
-};
 
 /** One game's tables: yours first, then public ones you can join. */
 export async function GameTables({ game }: { game: GameId }) {
-  const { name, path, newLabel } = GAMES[game];
+  const { short: name, path } = GAMES[game];
   const player = await requirePlayer(path);
   const { mine, others } = await listTablesFor(player.id, game);
 
@@ -36,9 +31,7 @@ export async function GameTables({ game }: { game: GameId }) {
             <p className="text-starlight/80">
               No other public {name} tables are open right now. Start one and others can join you.
             </p>
-            <Link href={`${path}/new`} className="pixel-btn bg-neon-magenta text-ink">
-              {newLabel}
-            </Link>
+            <NewTableButton game={game} />
           </div>
         )}
       </section>

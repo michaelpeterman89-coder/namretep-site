@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { NewTableButton } from "@/components/new-table-button";
 import { TableList } from "@/components/table-list";
+import { GAMES } from "@/lib/games/catalog";
 import { requirePlayer } from "@/lib/auth";
 import { listMyTables, listTablesFor, type GameId } from "@/server/tables";
 
@@ -24,15 +26,9 @@ export default function TablesPage({ searchParams }: PageProps<"/tables">) {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-display text-lg text-starlight drop-shadow-[3px_3px_0_var(--color-ink)]">Tables</h1>
         <div className="flex flex-wrap gap-3">
-          <Link href="/blackjack/new" className="pixel-btn bg-neon-magenta text-ink">
-            New blackjack table
-          </Link>
-          <Link href="/poker/new" className="pixel-btn bg-neon-gold text-ink">
-            New poker table
-          </Link>
-          <Link href="/craps/new" className="pixel-btn bg-neon-cyan text-ink">
-            New craps table
-          </Link>
+          <NewTableButton game="blackjack" />
+          <NewTableButton game="holdem" />
+          <NewTableButton game="craps" />
         </div>
       </div>
       <Suspense fallback={<div className="pixel-panel h-40 animate-pulse" />}>
@@ -86,21 +82,11 @@ async function FilteredTables({ searchParams }: { searchParams: PageProps<"/tabl
               : "No tables are open right now. Start one and others can join you."}
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            {(filter === "all" || filter === "mine" || filter === "blackjack") && (
-              <Link href="/blackjack/new" className="pixel-btn bg-neon-cyan text-ink">
-                Blackjack table
-              </Link>
-            )}
-            {(filter === "all" || filter === "mine" || filter === "holdem") && (
-              <Link href="/poker/new" className="pixel-btn bg-neon-gold text-ink">
-                Poker table
-              </Link>
-            )}
-            {(filter === "all" || filter === "mine" || filter === "craps") && (
-              <Link href="/craps/new" className="pixel-btn bg-neon-magenta text-ink">
-                Craps table
-              </Link>
-            )}
+            {(["blackjack", "holdem", "craps"] as const)
+              .filter((g) => filter === "all" || filter === "mine" || filter === g)
+              .map((g) => (
+                <NewTableButton key={g} game={g} label={`${GAMES[g].short[0].toUpperCase()}${GAMES[g].short.slice(1)} table`} />
+              ))}
           </div>
         </div>
       )}

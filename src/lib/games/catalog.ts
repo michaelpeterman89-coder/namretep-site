@@ -1,9 +1,10 @@
-// Each game's display name and where its pages live.
+// Each game's display name, where its pages live, and its color (used for
+// its buttons and labels everywhere, so each game always looks the same).
 
 export const GAMES = {
-  blackjack: { name: "Blackjack", path: "/blackjack" },
-  holdem: { name: "Texas Hold'em", path: "/poker" },
-  craps: { name: "Craps", path: "/craps" },
+  blackjack: { name: "Blackjack", short: "blackjack", path: "/blackjack", button: "bg-neon-magenta text-ink", text: "text-neon-magenta" },
+  holdem: { name: "Texas Hold'em", short: "poker", path: "/poker", button: "bg-neon-gold text-ink", text: "text-neon-gold" },
+  craps: { name: "Craps", short: "craps", path: "/craps", button: "bg-neon-cyan text-ink", text: "text-neon-cyan" },
 } as const;
 
 export type GameKey = keyof typeof GAMES;

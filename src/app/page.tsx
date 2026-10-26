@@ -1,11 +1,12 @@
 import Link from "next/link";
 
-const games: { name: string; status: string; accent: string; href?: string }[] = [
-  { name: "Blackjack", status: "Play now", accent: "text-neon-cyan", href: "/blackjack" },
+// Playable games use their own color (see GAMES in lib/games/catalog).
+const games: { name: string; status: string; accent: string; border?: string; href?: string }[] = [
+  { name: "Blackjack", status: "Play now", accent: "text-neon-magenta", border: "border-neon-magenta hover:bg-neon-magenta/10", href: "/blackjack" },
   { name: "Roulette", status: "Later", accent: "text-starlight/70" },
-  { name: "Craps", status: "Play now", accent: "text-neon-magenta", href: "/craps" },
+  { name: "Craps", status: "Play now", accent: "text-neon-cyan", border: "border-neon-cyan hover:bg-neon-cyan/10", href: "/craps" },
   { name: "Baccarat", status: "Later", accent: "text-starlight/70" },
-  { name: "Texas Hold'em", status: "Play now", accent: "text-neon-gold", href: "/poker" },
+  { name: "Texas Hold'em", status: "Play now", accent: "text-neon-gold", border: "border-neon-gold hover:bg-neon-gold/10", href: "/poker" },
   { name: "Video Poker", status: "Later", accent: "text-starlight/70" },
 ];
 
@@ -55,7 +56,7 @@ export default function Home() {
               {game.href ? (
                 <Link
                   href={game.href}
-                  className="flex items-center justify-between rounded-md border-2 border-neon-cyan bg-space-950/60 px-4 py-3 hover:bg-neon-cyan/10"
+                  className={`flex items-center justify-between rounded-md border-2 bg-space-950/60 px-4 py-3 ${game.border}`}
                 >
                   <span className="font-semibold">{game.name}</span>
                   <span className={`font-display text-[0.6rem] ${game.accent}`}>{game.status} →</span>
