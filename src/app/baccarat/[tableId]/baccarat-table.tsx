@@ -412,6 +412,15 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
     return cards.length >= 2 ? handTotal(cards) : null;
   };
 
+  // While the cards are out, nothing else may give the result away: the shoe
+  // still counts cards not yet dealt (how many come out decides Big / Small), and
+  // the scoreboards wait for this hand's result.
+  const undealt = hand
+    ? ([0, 1, 2].filter((i) => i < hand.player.length && !visible("player", i)).length +
+      [0, 1, 2].filter((i) => i < hand.banker.length && !visible("banker", i)).length)
+    : 0;
+  const shownHistory = dealingNow ? state.history.slice(0, -1) : state.history;
+
   const srSummary = !hand
     ? "Place your bets."
     : dealingNow
@@ -492,7 +501,7 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
       {/* The cards */}
       <DealContext value={{ shoeRef, discardRef, trayRef, plan: dealing?.plan ?? EMPTY_PLAN, settlement: null }}>
         <section aria-label="Baccarat table" className="craps-felt relative flex flex-col gap-3 p-4 pt-14 sm:p-6 sm:pt-6">
-          <Shoe cardsLeft={state.cardsLeft} className="top-3 right-3 sm:top-5 sm:right-5" />
+          <Shoe cardsLeft={state.cardsLeft + undealt} className="top-3 right-3 sm:top-5 sm:right-5" />
           <p className="text-center font-display text-xs text-neon-gold sm:text-sm" aria-hidden>
             {!hand ? "Place your bets" : dealingNow ? "Dealing…" : describeHand(hand)}
             {last?.newShoe && !dealingNow && <span className="ml-2 text-starlight/60">· new shoe</span>}
@@ -631,7 +640,7 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
         </p>
       )}
 
-      <Roads history={state.history} />
+      <Roads history={shownHistory} />
 
       {/* Seats */}
       <section aria-label="Players" className="pixel-panel flex flex-col gap-4 p-4 sm:p-5">
