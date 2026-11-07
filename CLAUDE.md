@@ -35,7 +35,7 @@ Secrets live in `.env.local` (never committed) and in Vercel Environment Variabl
 - Admins (`profiles.is_admin`) get an **Admin** link in the header and the pages under `/admin`: site overview, players (search, give/take chips, rename, make/remove admin, suspend/restore), open tables (close any table, even mid-hand), and an admin log. Everyone else gets a 404 there.
 - Every admin change goes through a SQL function that re-checks the caller is an admin and writes a row to `admin_actions` (the admin log). Chip changes also go in `chip_ledger` as `admin_adjust`.
 - Suspending sets `profiles.suspended_at` (locks the account out of every page at once), bans the login in Supabase Auth, and takes them off their tables. Admins can't remove their own admin access or suspend themselves.
-- Admins can clear "chips given/taken by admins" from the Leaders page, for one player or everyone (`chip_ledger.stats_cleared_at`). Ledger rows and balances don't change.
+- Admins can reset a player's Leaders stats (admin chips and profit and loss), for one player or everyone who's had admin chip changes (`chip_ledger.stats_cleared_at`). Ledger rows and balances don't change, and players must be away from tables first.
 - Admins can make other admins from the site. If nobody is left with admin access, it has to be granted again with a migration (`update public.profiles set is_admin = true where id = '…'`).
 
 ---

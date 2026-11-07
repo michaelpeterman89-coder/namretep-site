@@ -27,6 +27,8 @@ function adminError(error: { code?: string; message: string }): GameError {
   if (error.message.includes("BAD_AMOUNT")) return new GameError("Enter an amount between 1 and 100,000,000.");
   if (error.message.includes("INSUFFICIENT_CHIPS")) return new GameError("They don't have that many chips to take.");
   if (error.message.includes("NO_PROFILE")) return new GameError("That player doesn't exist.");
+  const seated = error.message.match(/STILL_SEATED:(\S+)/);
+  if (seated) return new GameError(`${seated[1]} is sitting at a table. They need to leave it, or you can close it, before resetting.`);
   return friendlyDbError(error, "That username is taken.");
 }
 
@@ -333,25 +335,27 @@ export async function adminCloseTable(adminId: string, tableId: string) {
 
 // ---------- Clearing the admin chip stats ----------
 
-/** Chips given and taken by admins that still count in the stats, for one player. */
+/** What still counts on the Leaders page for one player: admin chips, and game profit or loss. */
 export async function adminChipsCounted(playerId: string) {
   const { data, error } = await createAdminClient()
     .from("chip_ledger")
-    .select("amount")
+    .select("amount, reason")
     .eq("player_id", playerId)
-    .eq("reason", "admin_adjust")
     .is("stats_cleared_at", null);
   if (error) throw adminError(error);
-  const amounts = data.map((l) => Number(l.amount));
+  const fromAdmins = data.filter((l) => l.reason === "admin_adjust").map((l) => Number(l.amount));
+  const NOT_GAMES = ["admin_adjust", "opening_balance", "signup", "refill"];
   return {
-    given: amounts.filter((a) => a > 0).reduce((s, a) => s + a, 0),
-    taken: amounts.filter((a) => a < 0).reduce((s, a) => s - a, 0),
+    given: fromAdmins.filter((a) => a > 0).reduce((s, a) => s + a, 0),
+    taken: fromAdmins.filter((a) => a < 0).reduce((s, a) => s - a, 0),
+    profitLoss: data.filter((l) => !NOT_GAMES.includes(l.reason)).reduce((s, l) => s + Number(l.amount), 0),
   };
 }
 
 /**
- * Stops past admin gifts and takings counting in the stats, for one player or
- * (with null) everyone. Balances and the chip history don't change.
+ * Resets admin gifts and takings and game profit and loss on the Leaders page,
+ * for one player or (with null) everyone an admin has ever given chips to or
+ * taken them from. Balances and the chip history don't change.
  */
 export async function clearChipStats(adminId: string, playerId: string | null): Promise<number> {
   const { data, error } = await createAdminClient().rpc("admin_clear_chip_stats", {

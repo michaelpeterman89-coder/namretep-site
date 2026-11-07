@@ -44,8 +44,12 @@ export function ClearChipStatsForm({ playerId, username }: { playerId?: string; 
     <ConfirmForm
       action={clearChipStatsAction}
       fields={playerId ? { playerId } : {}}
-      label={playerId ? "Clear their admin chip stats" : "Clear admin chip stats for everyone"}
-      question={`Stop past admin chip changes counting on the Leaders page${username ? ` for ${username}` : " for everyone"}? Balances and the chip history stay as they are, and this goes in the admin log. New changes count from now on.`}
+      label={playerId ? "Reset their Leaders stats" : "Reset Leaders stats for players given chips"}
+      question={
+        username
+          ? `Reset ${username}'s admin chips and profit and loss on the Leaders page? Their balance and chip history stay as they are, and this goes in the admin log. New results count from now on.`
+          : "Reset admin chips and profit and loss on the Leaders page for every player an admin has given chips to or taken them from? Their real game results go too. Other players keep theirs. Balances and chip history stay as they are, and this goes in the admin log."
+      }
       danger
     />
   );

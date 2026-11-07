@@ -45,9 +45,9 @@ async function Overview() {
           <Tile label="Taken by admins" value={formatChips(board.totals.adminTaken)} note="Counted on Leaders" />
         </div>
         <p className="text-sm text-starlight/70">
-          Testing with chips? Clearing takes these out of the Leaders page without changing anyone&apos;s balance. To remove
-          the chips themselves, use Take chips on the player&apos;s page first. One player&apos;s stats can be cleared from their
-          page too.
+          Testing with chips? Resetting takes these and those players&apos; profit and loss off the Leaders page without
+          changing anyone&apos;s balance. To remove the chips themselves, use Take chips on the player&apos;s page first. To reset
+          just one player, use the button on their page.
         </p>
         <ClearChipStatsForm />
       </section>

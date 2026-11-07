@@ -78,7 +78,8 @@ async function PlayerContent({ params }: { params: Promise<{ playerId: string }>
           <AdjustChipsForm playerId={p.id} />
           <div className="flex flex-col gap-3 border-t-2 border-space-700 pt-4">
             <p className="text-sm text-starlight/80">
-              Counted on Leaders: {formatChips(adminChips.given)} given, {formatChips(adminChips.taken)} taken.
+              Counted on Leaders: {formatChips(adminChips.given)} given, {formatChips(adminChips.taken)} taken,{" "}
+              {signed(adminChips.profitLoss)} profit and loss.
             </p>
             <ClearChipStatsForm playerId={p.id} username={p.username} />
           </div>

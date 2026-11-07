@@ -40,9 +40,9 @@ export function describeAdminAction(line: AdminLogLine): string {
     case "rename":
       return `renamed ${String(d.from)} to ${String(d.to)}`;
     case "clear_chip_stats":
-      return `cleared admin chip stats (${formatChips(Number(d.given))} given, ${formatChips(Number(d.taken))} taken)${
-        line.targetId ? "" : " for everyone"
-      }`;
+      return `reset Leaders stats (${formatChips(Number(d.given))} given, ${formatChips(Number(d.taken))} taken${
+        d.profit_loss === undefined ? "" : `, ${formatChips(Number(d.profit_loss))} profit and loss`
+      })${line.targetId ? "" : " for players given chips"}`;
     case "close_table":
       return `closed the ${gameName(String(d.game))} table “${String(d.name)}”`;
     default:

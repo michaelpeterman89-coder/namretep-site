@@ -83,10 +83,10 @@ export async function closeTableAdminAction(_prev: AdminFormState, formData: For
   });
 }
 
-/** With no player chosen, clears the stats for everyone. */
+/** With no player chosen, resets everyone an admin has given chips to or taken them from. */
 export async function clearChipStatsAction(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
   return asAdmin(async (admin) => {
     const count = await clearChipStats(admin.id, formData.has("playerId") ? playerIdFrom(formData) : null);
-    return count === 0 ? "There was nothing to clear." : `Cleared ${formatChips(count)} admin chip change${count === 1 ? "" : "s"} from the stats.`;
+    return count === 0 ? "There was nothing to reset." : "Leaders stats reset. Balances didn't change.";
   });
 }
