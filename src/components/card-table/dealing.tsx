@@ -183,8 +183,10 @@ export function DealtCard({ slot, card, size = "md" }: { slot: string; card: Car
     const dy = from.top + from.height / 2 - (to.top + to.height / 2);
     el.animate(
       [
-        { transform: `translate(${dx}px, ${dy}px) rotate(-14deg) scale(0.7)`, opacity: 0.4 },
-        { transform: "translate(0, 0) rotate(0) scale(1)", opacity: 1 },
+        // Invisible until its delay is over, so a waiting card can't be read on the shoe.
+        { transform: `translate(${dx}px, ${dy}px) rotate(-14deg) scale(0.7)`, opacity: 0, offset: 0 },
+        { opacity: 1, offset: 0.12 },
+        { transform: "translate(0, 0) rotate(0) scale(1)", opacity: 1, offset: 1 },
       ],
       { duration: DEAL_FLIGHT_MS, delay: entry.delay, easing: "cubic-bezier(0.25, 0.9, 0.3, 1.05)", fill: "backwards" },
     );
