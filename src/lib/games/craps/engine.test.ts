@@ -18,7 +18,7 @@ import {
 import { DEFAULT_CRAPS_RULES, type CrapsRules } from "./rules";
 
 const P = "p1";
-const config = (rules: Partial<CrapsRules> = {}, minBet = 5, maxBet = 1_000_000): CrapsConfig => ({
+const config = (rules: Partial<CrapsRules> = {}, minBet = 5, maxBet: number | null = 1_000_000): CrapsConfig => ({
   rules: { ...DEFAULT_CRAPS_RULES, ...rules },
   minBet,
   maxBet,
@@ -575,5 +575,24 @@ describe("multi-roll house edges (simulated)", { timeout: 60_000 }, () => {
   it("Big 8 ≈ 9.09%", () => {
     const big8 = (t: Table) => t.bet({ kind: "big8", amount: 100 }).bet.id;
     near(simulatedEdge(big8, STD, D), 9.09);
+  });
+});
+
+describe("table maximum", () => {
+  it("stops a bet over the maximum", () => {
+    const t = new Table(config({}, 5, 500));
+    expect(() => t.bet({ kind: "pass", amount: 501 })).toThrow(/maximum/);
+  });
+
+  it("has no ceiling when the table has no maximum", () => {
+    const t = new Table(config({}, 5, null));
+    t.bet({ kind: "pass", amount: 5_000_000 });
+    t.bet({ kind: "pass", amount: 5_000_000 });
+    expect(t.state.bets.find((b) => b.kind === "pass")?.amount).toBe(10_000_000);
+  });
+
+  it("still rejects amounts too large to count exactly", () => {
+    const t = new Table(config({}, 5, null));
+    expect(() => t.bet({ kind: "pass", amount: 1e30 })).toThrow(IllegalCrapsBet);
   });
 });

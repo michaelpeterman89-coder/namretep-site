@@ -27,9 +27,9 @@ type TableBase = {
   visibility: "public" | "private";
   inviteCode: string | null;
   seats: number;
-  /** Blackjack: bet limits. Poker: big blind and maximum buy-in. */
+  /** Bet limits (poker: big blind and maximum buy-in). A null maximum means no limit. */
   minBet: number;
-  maxBet: number;
+  maxBet: number | null;
   status: "open" | "closed";
   bettingDeadline: Date | null;
 };
@@ -65,7 +65,7 @@ type TableRow = {
   invite_code: string | null;
   seats: number;
   min_bet: number;
-  max_bet: number;
+  max_bet: number | null;
   rules: unknown;
   status: "open" | "closed";
   betting_deadline_at: string | null;
@@ -75,7 +75,17 @@ const TABLE_COLUMNS =
   "id, game, name, owner_id, visibility, invite_code, seats, min_bet, max_bet, rules, status, betting_deadline_at";
 export const MAX_BET_LIMIT = 1_000_000;
 
+/** Checks the bet limits for a new table. A null maximum means no limit. */
+export function checkBetLimits(minBet: number, maxBet: number | null) {
+  if (!Number.isInteger(minBet) || minBet < 1) throw new GameError("Minimum bet must be at least 1.");
+  if (minBet > MAX_BET_LIMIT) throw new GameError(`Minimum bet can't be more than ${MAX_BET_LIMIT.toLocaleString("en-US")}.`);
+  if (maxBet !== null && (!Number.isInteger(maxBet) || maxBet < minBet || maxBet > MAX_BET_LIMIT)) {
+    throw new GameError(`Maximum bet must be between the minimum and ${MAX_BET_LIMIT.toLocaleString("en-US")}.`);
+  }
+}
+
 function toTable(row: TableRow): GameTable {
+  const maxBet = row.max_bet === null ? null : Number(row.max_bet);
   const base: TableBase = {
     id: row.id,
     name: row.name,
@@ -84,7 +94,7 @@ function toTable(row: TableRow): GameTable {
     inviteCode: row.invite_code,
     seats: row.seats,
     minBet: Number(row.min_bet),
-    maxBet: Number(row.max_bet),
+    maxBet,
     status: row.status,
     bettingDeadline: row.betting_deadline_at ? new Date(row.betting_deadline_at) : null,
   };
@@ -114,7 +124,7 @@ function toTable(row: TableRow): GameTable {
     inviteCode: row.invite_code,
     seats: row.seats,
     minBet: Number(row.min_bet),
-    maxBet: Number(row.max_bet),
+    maxBet,
     rules: parsed.rules,
     status: row.status,
     bettingDeadline: row.betting_deadline_at ? new Date(row.betting_deadline_at) : null,
@@ -151,7 +161,7 @@ export type NewTableInput = {
   visibility: "public" | "private";
   seats: number;
   minBet: number;
-  maxBet: number;
+  maxBet: number | null;
   rules: unknown;
 };
 
@@ -167,10 +177,7 @@ export async function createBlackjackTable(ownerId: string, input: NewTableInput
   if (name.length < 1 || name.length > 40) throw new GameError("Table name must be 1–40 characters.");
   if (input.visibility !== "public" && input.visibility !== "private") throw new GameError("Choose public or private.");
   if (!Number.isInteger(input.seats) || input.seats < 1 || input.seats > 7) throw new GameError("Seats must be 1–7.");
-  if (!Number.isInteger(input.minBet) || input.minBet < 1) throw new GameError("Minimum bet must be at least 1.");
-  if (!Number.isInteger(input.maxBet) || input.maxBet < input.minBet || input.maxBet > MAX_BET_LIMIT) {
-    throw new GameError(`Maximum bet must be between the minimum and ${MAX_BET_LIMIT.toLocaleString("en-US")}.`);
-  }
+  checkBetLimits(input.minBet, input.maxBet);
   const rules = parseRules(input.rules);
   if (!rules.ok) throw new GameError(rules.error);
 

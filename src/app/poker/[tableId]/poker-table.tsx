@@ -8,7 +8,7 @@ import { ChipStack } from "@/components/chip";
 import { DealContext, DealtCard, EMPTY_PLAN, prefersReducedMotion, Shoe, type DealPlan } from "@/components/card-table/dealing";
 import { cardLabel } from "@/components/playing-card";
 import { TickingNumber } from "@/components/ticking-number";
-import { formatChips } from "@/lib/chips";
+import { formatChips, formatLimits } from "@/lib/chips";
 import type { LogEntry, PublicHand, PublicSeat } from "@/lib/games/poker";
 import { pokerSummary } from "@/lib/games/poker/table-rules";
 import { playSound } from "@/lib/sound";
@@ -330,7 +330,7 @@ export function PokerTableView({ initialView }: { initialView: PokerView }) {
           </div>
           <p className="text-sm text-starlight/70">
             <span className="font-display text-[0.6rem] text-neon-gold">{pokerSummary(table.rules)}</span>
-            {" · "}Buy-in {formatChips(table.rules.minBuyIn)}–{formatChips(table.rules.maxBuyIn)}
+            {" · "}Buy-in {formatLimits(table.rules.minBuyIn, table.rules.maxBuyIn)}
           </p>
         </div>
         <p className="flex items-baseline gap-2">
@@ -412,7 +412,7 @@ export function PokerTableView({ initialView }: { initialView: PokerView }) {
                     onSit={() =>
                       setBuying({
                         seat: seatNumber,
-                        amount: Math.min(table.rules.maxBuyIn, Math.max(table.rules.minBuyIn, Math.floor(me.chips / 2))),
+                        amount: Math.min(table.rules.maxBuyIn ?? Infinity, Math.max(table.rules.minBuyIn, Math.floor(me.chips / 2))),
                       })
                     }
                   />
@@ -441,7 +441,7 @@ export function PokerTableView({ initialView }: { initialView: PokerView }) {
             seat={buying.seat}
             amount={buying.amount}
             min={table.rules.minBuyIn}
-            max={Math.min(table.rules.maxBuyIn, me.chips)}
+            max={Math.min(table.rules.maxBuyIn ?? Infinity, me.chips)}
             chips={me.chips}
             pending={pending}
             onChange={(amount) => setBuying({ ...buying, amount })}

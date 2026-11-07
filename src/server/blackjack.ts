@@ -1,4 +1,5 @@
 import "server-only";
+import { limitsInWords } from "@/lib/chips";
 import {
   actionChanges,
   applyAction,
@@ -142,10 +143,8 @@ export async function isRoundInProgress(tableId: string): Promise<boolean> {
 /** Puts down (or changes) the player's bet for the next deal, then deals if everyone's in. */
 export async function placeBet(table: BlackjackTable, playerId: string, bet: number) {
   if (table.status !== "open") throw new GameError("This table is closed.");
-  if (!Number.isInteger(bet) || bet < table.minBet || bet > table.maxBet) {
-    throw new GameError(
-      `Bet must be between ${table.minBet.toLocaleString("en-US")} and ${table.maxBet.toLocaleString("en-US")}.`,
-    );
+  if (!Number.isInteger(bet) || bet < table.minBet || bet > (table.maxBet ?? Infinity)) {
+    throw new GameError(`Bet must be ${limitsInWords(table.minBet, table.maxBet)}.`);
   }
   if (await isRoundInProgress(table.id)) throw new GameError("Wait for the current hand to finish.");
   if ((await getPlayerChips(playerId)) < bet) throw new GameError("You don't have enough chips for that bet.");

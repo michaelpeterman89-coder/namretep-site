@@ -30,7 +30,7 @@ import {
   GameError,
   getPlayerChips,
   getSeats,
-  MAX_BET_LIMIT,
+  checkBetLimits,
   sitDown,
   type CrapsTable,
   type SeatInfo,
@@ -135,7 +135,7 @@ export type NewCrapsTableInput = {
   visibility: "public" | "private";
   seats: number;
   minBet: number;
-  maxBet: number;
+  maxBet: number | null;
   rules: unknown;
 };
 
@@ -148,10 +148,7 @@ export async function createCrapsTable(ownerId: string, input: NewCrapsTableInpu
   if (name.length < 1 || name.length > 40) throw new GameError("Table name must be 1–40 characters.");
   if (input.visibility !== "public" && input.visibility !== "private") throw new GameError("Choose public or private.");
   if (!Number.isInteger(input.seats) || input.seats < 1 || input.seats > 8) throw new GameError("Seats must be 1–8.");
-  if (!Number.isInteger(input.minBet) || input.minBet < 1) throw new GameError("Minimum bet must be at least 1.");
-  if (!Number.isInteger(input.maxBet) || input.maxBet < input.minBet || input.maxBet > MAX_BET_LIMIT) {
-    throw new GameError(`Maximum bet must be between the minimum and ${MAX_BET_LIMIT.toLocaleString("en-US")}.`);
-  }
+  checkBetLimits(input.minBet, input.maxBet);
   const parsed = parseCrapsRules(input.rules);
   if (!parsed.ok) throw new GameError(parsed.error);
 

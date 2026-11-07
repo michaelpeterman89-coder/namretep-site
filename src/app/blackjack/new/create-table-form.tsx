@@ -58,11 +58,22 @@ function Choice<T extends string | number>({
   );
 }
 
-function Toggle({ label, checked, onChange }: { label: ReactNode; checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({
+  label,
+  name,
+  checked,
+  onChange,
+}: {
+  label: ReactNode;
+  name?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
   return (
     <label className="flex cursor-pointer items-center gap-3 rounded-md border-2 border-space-700 px-3 py-2.5 has-checked:border-neon-cyan">
       <input
         type="checkbox"
+        name={name}
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         className="size-5 accent-neon-cyan"
@@ -84,6 +95,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 export function CreateTableForm() {
   const [state, formAction] = useActionState(createTableAction, {} as CreateTableState);
   const [rules, setRules] = useState<BlackjackRules>(DEFAULT_RULES);
+  const [noMax, setNoMax] = useState(false);
   const set = <K extends keyof BlackjackRules>(key: K) => (value: BlackjackRules[K]) =>
     setRules((r) => ({ ...r, [key]: value }));
 
@@ -103,8 +115,19 @@ export function CreateTableForm() {
               </select>
             </label>
             <Field label="Min bet" name="minBet" type="number" required min={1} defaultValue={10} />
-            <Field label="Max bet" name="maxBet" type="number" required min={1} max={1_000_000} defaultValue={500} />
+            <Field
+              label="Max bet"
+              name="maxBet"
+              type="number"
+              required={!noMax}
+              disabled={noMax}
+              min={1}
+              max={1_000_000}
+              defaultValue={500}
+              className="pixel-input disabled:opacity-40"
+            />
           </div>
+          <Toggle label="No max bet (players can bet as much as they have)" name="noMaxBet" checked={noMax} onChange={setNoMax} />
           <Field
             label="Seats"
             name="seats"

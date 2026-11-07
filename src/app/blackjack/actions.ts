@@ -49,7 +49,7 @@ export async function createTableAction(_prev: CreateTableState, formData: FormD
       visibility: formData.get("visibility") === "private" ? "private" : "public",
       seats: Number(formData.get("seats")),
       minBet: Number(formData.get("minBet")),
-      maxBet: Number(formData.get("maxBet")),
+      maxBet: formData.get("noMaxBet") === "on" ? null : Number(formData.get("maxBet")),
       rules,
     });
   } catch (e) {

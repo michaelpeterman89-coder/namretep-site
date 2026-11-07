@@ -69,4 +69,9 @@ describe("betAfterChip", () => {
     expect(betAfterChip(MIN, 1000, true, MIN, MAX)).toBe(MAX);
     expect(betAfterChip(450, 100, false, MIN, MAX)).toBe(MAX);
   });
+
+  it("has no ceiling when the table has no maximum", () => {
+    expect(betAfterChip(MIN, 100_000, true, MIN, null)).toBe(100_000);
+    expect(betAfterChip(100_000, 100_000, false, MIN, null)).toBe(200_000);
+  });
 });

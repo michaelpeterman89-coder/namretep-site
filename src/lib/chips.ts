@@ -24,3 +24,13 @@ export function getRefillStatus(chips: number, lastRefillAt: Date | null, now: D
 export function formatChips(chips: number): string {
   return chips.toLocaleString("en-US");
 }
+
+/** A table's limits for showing: "10–500", or "10+ (no max)" when there's no maximum (null). */
+export function formatLimits(min: number, max: number | null): string {
+  return max === null ? `${formatChips(min)}+ (no max)` : `${formatChips(min)}–${formatChips(max)}`;
+}
+
+/** The allowed range in a sentence: "Bet must be {this}." */
+export function limitsInWords(min: number, max: number | null): string {
+  return max === null ? `at least ${formatChips(min)}` : `between ${formatChips(min)} and ${formatChips(max)}`;
+}

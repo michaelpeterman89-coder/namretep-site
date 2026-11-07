@@ -63,7 +63,7 @@ export function PokerGuide() {
         <Settings
           items={[
             ["Stakes", "The blinds, from 1/2 up to 100/200."],
-            ["Buy-in", "Between 20 and 100 big blinds."],
+            ["Buy-in", "Between 20 and 100 big blinds, or at least 20 with no maximum if the table has no max buy-in."],
             ["Seats", "2 to 9 players."],
             [
               "Bots",

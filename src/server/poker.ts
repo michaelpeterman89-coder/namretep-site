@@ -1,9 +1,11 @@
 import "server-only";
+import { limitsInWords } from "@/lib/chips";
 import {
   actionOptions,
   applyAction,
   BOT_NAMES,
   botDecision,
+  botStack,
   engineConfig,
   HAND_PAUSE_MS,
   IllegalPokerAction,
@@ -155,7 +157,7 @@ async function syncBots(table: PokerTable) {
     table_id: table.id,
     seat_number,
     bot_name: names[i],
-    stack: table.rules.maxBuyIn,
+    stack: botStack(table.rules),
   }));
   if (rows.length > 0) {
     const { error } = await admin.from("table_seats").insert(rows);
@@ -170,8 +172,8 @@ export async function buyIn(table: PokerTable, playerId: string, seatNumber: num
   if (table.status !== "open") throw new GameError("This table is closed.");
   if (!Number.isInteger(seatNumber) || seatNumber < 0 || seatNumber >= table.seats) throw new GameError("No such seat.");
   const { minBuyIn, maxBuyIn } = table.rules;
-  if (!Number.isInteger(amount) || amount < minBuyIn || amount > maxBuyIn) {
-    throw new GameError(`Buy in for ${minBuyIn.toLocaleString("en-US")}–${maxBuyIn.toLocaleString("en-US")} chips.`);
+  if (!Number.isInteger(amount) || amount < minBuyIn || amount > (maxBuyIn ?? Infinity)) {
+    throw new GameError(`Buy in for ${limitsInWords(minBuyIn, maxBuyIn)} chips.`);
   }
   if ((await getPlayerChips(playerId)) < amount) throw new GameError("You don't have enough chips for that buy-in.");
 
@@ -218,7 +220,7 @@ async function afterHand(table: PokerTable) {
   for (const seat of await getSeats(table.id)) {
     if (seat.isBot) {
       if ((seat.stack ?? 0) < table.rules.bigBlind * 10) {
-        await admin.from("table_seats").update({ stack: table.rules.maxBuyIn }).eq("table_id", table.id).eq("seat_number", seat.seatNumber);
+        await admin.from("table_seats").update({ stack: botStack(table.rules) }).eq("table_id", table.id).eq("seat_number", seat.seatNumber);
       }
       continue;
     }

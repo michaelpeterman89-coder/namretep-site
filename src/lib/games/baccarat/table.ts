@@ -59,7 +59,8 @@ export class IllegalBaccaratBet extends Error {
   }
 }
 
-export type Limits = { minBet: number; maxBet: number };
+/** A null maxBet means the table has no maximum. */
+export type Limits = { minBet: number; maxBet: number | null };
 
 /** Adds chips to a bet (one bet per player per kind). */
 export function addBet(
@@ -72,14 +73,14 @@ export function addBet(
 ): BaccaratState {
   const notOffered = betNotOffered(rules, kind);
   if (notOffered) throw new IllegalBaccaratBet(notOffered);
-  if (!Number.isInteger(amount) || amount < 1) throw new IllegalBaccaratBet("Bets must be at least 1 chip.");
+  if (!Number.isSafeInteger(amount) || amount < 1) throw new IllegalBaccaratBet("Bets must be at least 1 chip.");
   const existing = state.bets.find((b) => b.playerId === playerId && b.kind === kind);
   const total = (existing?.amount ?? 0) + amount;
   // The table minimum is for Player and Banker; the Tie and side bets need only 1 chip.
   if ((kind === "player" || kind === "banker") && total < limits.minBet) {
     throw new IllegalBaccaratBet(`The table minimum is ${limits.minBet}.`);
   }
-  if (total > limits.maxBet) throw new IllegalBaccaratBet(`The table maximum is ${limits.maxBet}.`);
+  if (limits.maxBet !== null && total > limits.maxBet) throw new IllegalBaccaratBet(`The table maximum is ${limits.maxBet}.`);
   const bets = existing
     ? state.bets.map((b) => (b === existing ? { ...b, amount: total } : b))
     : [...state.bets, { playerId, kind, amount }];

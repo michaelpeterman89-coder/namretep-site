@@ -33,6 +33,14 @@ describe("betting", () => {
     expect(() => addBet(s, R, LIMITS, "a", "dragon7", 5)).toThrow(IllegalBaccaratBet);
   });
 
+  it("has no ceiling when the table has no maximum, but keeps the minimum", () => {
+    const open = { minBet: 10, maxBet: null };
+    const s = addBet(newBaccaratState(416), R, open, "a", "banker", 5_000_000);
+    expect(addBet(s, R, open, "a", "banker", 5_000_000).bets[0].amount).toBe(10_000_000);
+    expect(() => addBet(s, R, open, "a", "player", 5)).toThrow(/minimum/);
+    expect(() => addBet(s, R, open, "a", "player", 1e30)).toThrow(IllegalBaccaratBet);
+  });
+
   it("takes bets down and returns the chips", () => {
     let s = addBet(newBaccaratState(416), R, LIMITS, "a", "player", 20);
     s = addBet(s, R, LIMITS, "a", "tie", 5);

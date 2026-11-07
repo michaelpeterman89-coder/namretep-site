@@ -16,7 +16,7 @@ import {
 import { Chip, ChipStack, DENOMINATIONS } from "@/components/chip";
 import { cardLabel } from "@/components/playing-card";
 import { TickingNumber } from "@/components/ticking-number";
-import { formatChips } from "@/lib/chips";
+import { formatChips, formatLimits } from "@/lib/chips";
 import {
   baccaratSummary,
   beadPlate,
@@ -429,7 +429,9 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
           myLast.length ? (myNet > 0 ? ` You won ${formatChips(myNet)}.` : myNet < 0 ? ` You lost ${formatChips(-myNet)}.` : " Your bets pushed.") : ""
         }`;
 
-  const chips = DENOMINATIONS.filter((d) => d.value <= table.maxBet && d.value <= Math.max(me.chips, table.minBet)).slice(0, 7);
+  // Chips you can afford that fit the limits. With no maximum, keep the biggest so large bets are quick to make.
+  const usableChips = DENOMINATIONS.filter((d) => d.value <= (table.maxBet ?? Infinity) && d.value <= Math.max(me.chips, table.minBet));
+  const chips = table.maxBet === null ? usableChips.slice(-7) : usableChips.slice(0, 7);
 
   if (table.status === "closed") {
     return (
@@ -483,7 +485,7 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
           </div>
           <p className="text-sm text-starlight/70">
             <span className="font-display text-[0.6rem] text-neon-lime">{baccaratSummary(r)}</span>
-            {" · "}Bets {formatChips(table.minBet)}–{formatChips(table.maxBet)}
+            {" · "}Bets {formatLimits(table.minBet, table.maxBet)}
           </p>
         </div>
         <p className="flex items-baseline gap-2">

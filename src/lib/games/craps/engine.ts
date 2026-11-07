@@ -88,7 +88,8 @@ export type CrapsState = {
   nextBetId: number;
 };
 
-export type CrapsConfig = { rules: CrapsRules; minBet: number; maxBet: number };
+/** A null maxBet means the table has no maximum. */
+export type CrapsConfig = { rules: CrapsRules; minBet: number; maxBet: number | null };
 
 export class IllegalCrapsBet extends Error {
   constructor(message: string) {
@@ -142,9 +143,9 @@ function checkBet(state: CrapsState, config: CrapsConfig, playerId: string, r: B
   const { rules } = config;
   const crapless = rules.variant === "crapless";
   const points = pointNumbers(rules.variant);
-  if (!Number.isInteger(r.amount) || r.amount < 1) return "Bets must be at least 1 chip.";
+  if (!Number.isSafeInteger(r.amount) || r.amount < 1) return "Bets must be at least 1 chip.";
   if (TABLE_MIN.includes(r.kind) && total < config.minBet) return `The table minimum is ${config.minBet}.`;
-  if (r.kind !== "odds" && r.kind !== "layOdds" && total > config.maxBet) return `The table maximum is ${config.maxBet}.`;
+  if (config.maxBet !== null && r.kind !== "odds" && r.kind !== "layOdds" && total > config.maxBet) return `The table maximum is ${config.maxBet}.`;
   if ((r.kind === "dontPass" || r.kind === "dontCome") && crapless) return "Crapless craps has no Don't bets.";
   if (PROPS.includes(r.kind) && !rules.props) return "This table doesn't offer proposition bets.";
   const split = SPLITS[r.kind];

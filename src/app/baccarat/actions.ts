@@ -35,7 +35,7 @@ export async function createBaccaratTableAction(
       visibility: formData.get("visibility") === "private" ? "private" : "public",
       seats: Number(formData.get("seats")),
       minBet: Number(formData.get("minBet")),
-      maxBet: Number(formData.get("maxBet")),
+      maxBet: on("noMaxBet") ? null : Number(formData.get("maxBet")),
       rules: {
         variant: String(formData.get("variant")),
         decks: Number(formData.get("decks")),

@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { Field, FormMessage, SubmitButton } from "@/components/form";
-import { formatChips } from "@/lib/chips";
+import { formatChips, formatLimits } from "@/lib/chips";
 import { DEFAULT_POKER_RULES } from "@/lib/games/poker/table-rules";
 import { createPokerTableAction, type CreatePokerTableState } from "../actions";
 
@@ -16,6 +16,7 @@ const STAKES = [
 export function CreatePokerForm() {
   const [state, formAction] = useActionState(createPokerTableAction, {} as CreatePokerTableState);
   const [stakes, setStakes] = useState(1);
+  const [noMax, setNoMax] = useState(false);
   const [seats, setSeats] = useState(6);
   const [bots, setBots] = useState(DEFAULT_POKER_RULES.bots);
   const { sb, bb } = STAKES[stakes];
@@ -55,6 +56,20 @@ export function CreatePokerForm() {
             ))}
           </div>
         </fieldset>
+
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            name="noMaxBuyIn"
+            checked={noMax}
+            onChange={(e) => setNoMax(e.target.checked)}
+            className="mt-1 size-4 accent-neon-magenta"
+          />
+          <span className="flex flex-col">
+            <span>No max buy-in (players can sit down with as much as they have)</span>
+            <span className="text-sm text-starlight/60">Betting in a hand is always no-limit, up to your stack.</span>
+          </span>
+        </label>
 
         <div className="grid gap-5 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5">
@@ -98,7 +113,7 @@ export function CreatePokerForm() {
           No-Limit Hold&apos;em · {formatChips(sb)}/{formatChips(bb)}
         </p>
         <p className="text-sm text-starlight/80">
-          Buy-in {formatChips(minBuyIn)}–{formatChips(maxBuyIn)} chips (20–100 big blinds)
+          Buy-in {formatLimits(minBuyIn, noMax ? null : maxBuyIn)} chips ({noMax ? "20+" : "20–100"} big blinds)
           <br />
           {seats} seats · {bots === 0 ? "people only" : `${bots} bot${bots > 1 ? "s" : ""}`}
         </p>

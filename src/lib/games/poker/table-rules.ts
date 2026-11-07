@@ -10,9 +10,9 @@ export type PokerTableRules = {
   smallBlind: number;
   bigBlind: number;
   ante: number;
-  /** Smallest and largest stack you can sit down with. */
+  /** Smallest and largest stack you can sit down with. A null maximum means no limit. */
   minBuyIn: number;
-  maxBuyIn: number;
+  maxBuyIn: number | null;
   /** How many seats computer opponents fill (they leave room for real players). */
   bots: number;
 };
@@ -49,8 +49,15 @@ export function parsePokerRules(input: unknown, seats: number): PokerRulesResult
   if (!whole(r.minBuyIn) || r.minBuyIn < r.bigBlind * 10) {
     return { ok: false, error: "Minimum buy-in must be at least 10 big blinds." };
   }
-  if (!whole(r.maxBuyIn) || r.maxBuyIn < r.minBuyIn || r.maxBuyIn > POKER_LIMITS.maxBuyIn) {
-    return { ok: false, error: `Maximum buy-in must be between the minimum and ${formatChips(POKER_LIMITS.maxBuyIn)}.` };
+  if (r.minBuyIn > POKER_LIMITS.maxBuyIn) {
+    return { ok: false, error: `Minimum buy-in can't be more than ${formatChips(POKER_LIMITS.maxBuyIn)}.` };
+  }
+  let maxBuyIn: number | null = null;
+  if (r.maxBuyIn !== null) {
+    if (!whole(r.maxBuyIn) || r.maxBuyIn < r.minBuyIn || r.maxBuyIn > POKER_LIMITS.maxBuyIn) {
+      return { ok: false, error: `Maximum buy-in must be between the minimum and ${formatChips(POKER_LIMITS.maxBuyIn)}.` };
+    }
+    maxBuyIn = r.maxBuyIn;
   }
   if (!whole(r.bots) || r.bots < 0 || r.bots > seats - 1) {
     return { ok: false, error: "Bots can fill every seat but one (leave room for you)." };
@@ -64,10 +71,15 @@ export function parsePokerRules(input: unknown, seats: number): PokerRulesResult
       bigBlind: r.bigBlind,
       ante,
       minBuyIn: r.minBuyIn,
-      maxBuyIn: r.maxBuyIn,
+      maxBuyIn,
       bots: r.bots,
     },
   };
+}
+
+/** What a bot sits down with: the maximum buy-in, or 100 big blinds if there isn't one. */
+export function botStack(rules: PokerTableRules): number {
+  return rules.maxBuyIn ?? rules.bigBlind * 100;
 }
 
 /** Engine settings for a hand at this table. */

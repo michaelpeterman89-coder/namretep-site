@@ -475,7 +475,7 @@ export type Database = {
           id: string
           invite_code: string | null
           last_activity_at: string
-          max_bet: number
+          max_bet: number | null
           min_bet: number
           name: string
           owner_id: string
@@ -492,7 +492,7 @@ export type Database = {
           id?: string
           invite_code?: string | null
           last_activity_at?: string
-          max_bet: number
+          max_bet?: number | null
           min_bet: number
           name: string
           owner_id: string
@@ -509,7 +509,7 @@ export type Database = {
           id?: string
           invite_code?: string | null
           last_activity_at?: string
-          max_bet?: number
+          max_bet?: number | null
           min_bet?: number
           name?: string
           owner_id?: string

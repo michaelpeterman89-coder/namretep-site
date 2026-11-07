@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { Field, FormMessage, SubmitButton } from "@/components/form";
-import { formatChips } from "@/lib/chips";
+import { formatChips, formatLimits } from "@/lib/chips";
 import {
   crapsSummary,
   DEFAULT_CRAPS_RULES,
@@ -70,6 +70,7 @@ export function CreateCrapsForm() {
   const [state, formAction] = useActionState(createCrapsTableAction, {} as CreateCrapsTableState);
   const [rules, setRules] = useState<CrapsRules>(DEFAULT_CRAPS_RULES);
   const [stakes, setStakes] = useState(1);
+  const [noMax, setNoMax] = useState(false);
   const [seats, setSeats] = useState(6);
   const set = <K extends keyof CrapsRules>(key: K, value: CrapsRules[K]) => setRules((r) => ({ ...r, [key]: value }));
   const { min, max } = STAKES[stakes];
@@ -91,12 +92,22 @@ export function CreateCrapsForm() {
             </select>
           </label>
           <Choice
-            legend="Bets (table minimum – maximum)"
+            legend={noMax ? "Bets (table minimum)" : "Bets (table minimum – maximum)"}
             name="stakes"
             value={stakes}
-            options={STAKES.map((s, i) => ({ value: i, label: s.label }))}
+            options={STAKES.map((s, i) => ({ value: i, label: noMax ? `${formatChips(s.min)}+` : s.label }))}
             onChange={setStakes}
           />
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              name="noMaxBet"
+              checked={noMax}
+              onChange={(e) => setNoMax(e.target.checked)}
+              className="mt-1 size-4 accent-neon-magenta"
+            />
+            <span>No max bet (players can bet as much as they have)</span>
+          </label>
           <label className="flex flex-col gap-1.5">
             <span className="font-display text-[0.65rem] text-neon-cyan">Seats: {seats}</span>
             <input
@@ -182,7 +193,7 @@ export function CreateCrapsForm() {
         <h2 className="font-display text-sm text-neon-gold">Summary</h2>
         <p className="font-display text-[0.6rem] leading-relaxed text-neon-magenta">{crapsSummary(rules)}</p>
         <p className="text-sm text-starlight/80">
-          Bets {formatChips(min)}–{formatChips(max)} · {seats} seat{seats === 1 ? "" : "s"}
+          Bets {formatLimits(min, noMax ? null : max)} · {seats} seat{seats === 1 ? "" : "s"}
         </p>
         <p className="text-sm text-starlight/80">
           House edge on the Pass Line: <span className="text-neon-gold">{passLineEdge(rules)}%</span>

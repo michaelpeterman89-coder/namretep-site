@@ -89,7 +89,7 @@ Secrets live in `.env.local` (never committed) and in Vercel Environment Variabl
 | Surrender | None / Late / Early |
 | Insurance offered | Yes / No |
 | Shuffle point (penetration) | e.g. 50%–85% of shoe |
-| Min / max bet | chip amounts |
+| Min / max bet | chip amounts, or no max |
 | Seats | 1–7 |
 
 Each table shows a short **rules summary** (e.g. "6D · S17 · 3:2 · DAS · LS") and an approximate **house edge** for that rule set.

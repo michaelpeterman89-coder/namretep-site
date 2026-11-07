@@ -16,8 +16,8 @@ const ACTION_REASONS: Partial<Record<BlackjackAction["type"], ChipReason>> = {
  * bet replaces it, unless the chip is below the minimum (then it adds, since
  * the chip alone wouldn't be a legal bet). Later chips add. Never over the maximum.
  */
-export function betAfterChip(bet: number, chip: number, untouched: boolean, minBet: number, maxBet: number): number {
-  return Math.min(untouched && chip >= minBet ? chip : bet + chip, maxBet);
+export function betAfterChip(bet: number, chip: number, untouched: boolean, minBet: number, maxBet: number | null): number {
+  return Math.min(untouched && chip >= minBet ? chip : bet + chip, maxBet ?? Infinity);
 }
 
 /** Chips taken from each seat for its opening bet. */

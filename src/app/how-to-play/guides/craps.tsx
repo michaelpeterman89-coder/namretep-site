@@ -103,6 +103,7 @@ export function CrapsGuide() {
         <Settings
           items={[
             ["Game", "Craps or crapless craps."],
+            ["Bet limits", "A minimum and maximum bet, or no maximum: bet as much as you have."],
             ["Odds allowed", "1x, 2x, 3-4-5x (3x on 4/10, 4x on 5/9, 5x on 6/8), 5x, 10x, or 100x your line bet."],
             ["Field pays on 12", "3 to 1 (better for you) or 2 to 1."],
             ["Buy & lay commission", "Charged only when the bet wins, or up front when you make it."],

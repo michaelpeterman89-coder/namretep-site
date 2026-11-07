@@ -24,7 +24,7 @@ export function BlackjackGuide() {
       <Section id="round" title="How a round goes">
         <Steps>
           <li>
-            Choose your bet (between the table&apos;s minimum and maximum) and press <strong>Deal</strong> — or{" "}
+            Choose your bet (at least the table&apos;s minimum, and up to its maximum if it has one) and press <strong>Deal</strong> — or{" "}
             <strong>Place bet</strong> when others are at the table.
           </li>
           <li>
@@ -72,6 +72,7 @@ export function BlackjackGuide() {
         <p>Whoever creates the table picks the rules. These are the ones that change the game most:</p>
         <Settings
           items={[
+            ["Bet limits", "A minimum and maximum bet, or no maximum: bet as much as you have."],
             ["Decks", "1, 2, 4, 6, or 8. Fewer decks are slightly better for you."],
             ["Dealer on soft 17", "S17 (stands) is better for you than H17 (hits)."],
             ["Blackjack pays", "3:2 is standard. 6:5 and 1:1 cost you a lot more over time."],

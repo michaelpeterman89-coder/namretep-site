@@ -7,7 +7,7 @@ import { GuideLink } from "@/components/guide-link";
 import { Burst } from "@/components/burst";
 import { cardLabel } from "@/components/playing-card";
 import { TickingNumber } from "@/components/ticking-number";
-import { formatChips } from "@/lib/chips";
+import { formatChips, formatLimits, limitsInWords } from "@/lib/chips";
 import { handValue, isTwoCard21, type Card } from "@/lib/games/blackjack/cards";
 import { betAfterChip } from "@/lib/games/blackjack/chips";
 import type { ActionType, PlayerHand, Seat } from "@/lib/games/blackjack/engine";
@@ -322,8 +322,8 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
 
   function placeBet() {
     if (pending) return;
-    if (bet < table.minBet || bet > table.maxBet) {
-      setError(`Bet must be between ${formatChips(table.minBet)} and ${formatChips(table.maxBet)}.`);
+    if (bet < table.minBet || bet > (table.maxBet ?? Infinity)) {
+      setError(`Bet must be ${limitsInWords(table.minBet, table.maxBet)}.`);
       return;
     }
     if (bet > me.chips) {
@@ -509,8 +509,8 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
     status = "Dealer has blackjack.";
   }
 
-  // Chips that fit this table's limits; at most six, keeping the biggest.
-  const chipSteps = DENOMINATIONS.filter((d) => d.value <= table.maxBet).slice(-6);
+  // Chips that fit this table's limits (with no maximum, your balance); at most six, keeping the biggest.
+  const chipSteps = DENOMINATIONS.filter((d) => d.value <= (table.maxBet ?? Math.max(me.chips, table.minBet))).slice(-6);
   const small = table.seats > 2;
 
   if (table.status === "closed") {
@@ -536,8 +536,7 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
           </div>
           <p className="text-sm text-starlight/70">
             <span className="font-display text-[0.6rem] text-neon-magenta">{rulesSummary(rules)}</span>
-            {" · "}House edge ≈ {houseEdge(rules).toFixed(2)}% · Bets {formatChips(table.minBet)}–
-            {formatChips(table.maxBet)}
+            {" · "}House edge ≈ {houseEdge(rules).toFixed(2)}% · Bets {formatLimits(table.minBet, table.maxBet)}
           </p>
         </div>
         <p className="flex items-baseline gap-2">
@@ -772,7 +771,7 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
                   type="number"
                   inputMode="numeric"
                   min={table.minBet}
-                  max={table.maxBet}
+                  max={table.maxBet ?? undefined}
                   value={bet}
                   onChange={(e) => {
                     setBet(Math.floor(Number(e.target.value) || 0));

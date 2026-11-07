@@ -38,7 +38,7 @@ export async function createCrapsTableAction(_prev: CreateCrapsTableState, formD
       visibility: formData.get("visibility") === "private" ? "private" : "public",
       seats: Number(formData.get("seats")),
       minBet: Number(formData.get("minBet")),
-      maxBet: Number(formData.get("maxBet")),
+      maxBet: on("noMaxBet") ? null : Number(formData.get("maxBet")),
       rules: {
         variant: formData.get("variant") === "crapless" ? "crapless" : "standard",
         odds: String(formData.get("odds")),

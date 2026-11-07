@@ -32,7 +32,7 @@ export async function createPokerTableAction(
         bigBlind: Number(formData.get("bigBlind")),
         ante: 0,
         minBuyIn: Number(formData.get("minBuyIn")),
-        maxBuyIn: Number(formData.get("maxBuyIn")),
+        maxBuyIn: formData.get("noMaxBuyIn") === "on" ? null : Number(formData.get("maxBuyIn")),
         bots: Number(formData.get("bots")),
       },
     });
