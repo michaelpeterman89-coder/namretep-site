@@ -9,6 +9,7 @@ import { cardLabel } from "@/components/playing-card";
 import { TickingNumber } from "@/components/ticking-number";
 import { formatChips } from "@/lib/chips";
 import { handValue, isTwoCard21, type Card } from "@/lib/games/blackjack/cards";
+import { betAfterChip } from "@/lib/games/blackjack/chips";
 import type { ActionType, PlayerHand, Seat } from "@/lib/games/blackjack/engine";
 import { houseEdge, rulesSummary } from "@/lib/games/blackjack/rules";
 import { actionLabel } from "@/lib/games/blackjack/strategy";
@@ -148,7 +149,9 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
   const discardRef = useRef<HTMLDivElement>(null);
   const trayRef = useRef<HTMLDivElement>(null);
   const [now, setNow] = useState(() => Date.now());
-  const [bet, setBet] = useState(() => Math.min(Math.max(initialView.table.minBet, 10), initialView.table.maxBet));
+  const [bet, setBet] = useState(initialView.table.minBet);
+  // True while the bet is still the untouched table minimum (see betAfterChip).
+  const [betUntouched, setBetUntouched] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -675,10 +678,15 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
                   type="button"
                   onClick={() => {
                     playSound("chip");
-                    setBet((b) => Math.min(b + d.value, table.maxBet));
+                    setBet((b) => betAfterChip(b, d.value, betUntouched, table.minBet, table.maxBet));
+                    setBetUntouched(false);
                   }}
                   className="rounded-full"
-                  aria-label={`Add ${formatChips(d.value)} to bet`}
+                  aria-label={
+                    betUntouched && d.value >= table.minBet
+                      ? `Bet ${formatChips(d.value)}`
+                      : `Add ${formatChips(d.value)} to bet`
+                  }
                   title={`${d.name} · ${formatChips(d.value)}`}
                 >
                   <Chip denomination={d} size="lg" />
@@ -686,7 +694,10 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
               ))}
               <button
                 type="button"
-                onClick={() => setBet(table.minBet)}
+                onClick={() => {
+                  setBet(table.minBet);
+                  setBetUntouched(true);
+                }}
                 className="px-2 text-sm text-starlight/70 underline underline-offset-4 hover:text-starlight"
               >
                 Reset
@@ -701,7 +712,10 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
                   min={table.minBet}
                   max={table.maxBet}
                   value={bet}
-                  onChange={(e) => setBet(Math.floor(Number(e.target.value) || 0))}
+                  onChange={(e) => {
+                    setBet(Math.floor(Number(e.target.value) || 0));
+                    setBetUntouched(false);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();

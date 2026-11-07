@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Card, Shoe } from "./cards";
-import { actionChanges, betChanges, payoutChanges } from "./chips";
+import { actionChanges, betAfterChip, betChanges, payoutChanges } from "./chips";
 import { applyAction, startRound } from "./engine";
 import { DEFAULT_RULES, type BlackjackRules } from "./rules";
 
@@ -44,5 +44,29 @@ describe("chip changes", () => {
   it("skips losers", () => {
     const round = startRound(rules, stacked(["Ts", "9d", "7h", "Tc"]), [{ playerId: "a", bet: 100 }]);
     expect(payoutChanges(applyAction(rules, round, { type: "stand", seat: 0 }))).toEqual([]);
+  });
+});
+
+describe("betAfterChip", () => {
+  const MIN = 10;
+  const MAX = 500;
+
+  it("replaces an untouched minimum bet with the first chip", () => {
+    expect(betAfterChip(MIN, 50, true, MIN, MAX)).toBe(50);
+    expect(betAfterChip(MIN, MIN, true, MIN, MAX)).toBe(MIN);
+  });
+
+  it("adds a first chip that is below the minimum", () => {
+    expect(betAfterChip(MIN, 5, true, MIN, MAX)).toBe(15);
+  });
+
+  it("adds every chip after the first", () => {
+    expect(betAfterChip(50, 25, false, MIN, MAX)).toBe(75);
+    expect(betAfterChip(15, 5, false, MIN, MAX)).toBe(20);
+  });
+
+  it("never goes over the table maximum", () => {
+    expect(betAfterChip(MIN, 1000, true, MIN, MAX)).toBe(MAX);
+    expect(betAfterChip(450, 100, false, MIN, MAX)).toBe(MAX);
   });
 });
