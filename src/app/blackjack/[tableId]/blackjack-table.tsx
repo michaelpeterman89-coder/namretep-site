@@ -20,6 +20,7 @@ import type { TableView } from "@/server/blackjack";
 import type { SeatInfo } from "@/server/tables";
 import {
   betAction,
+  hintAction,
   closeTableAction,
   playAction,
   sitAction,
@@ -154,6 +155,8 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
   const [betUntouched, setBetUntouched] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
+  // A hint asked for before acting, tied to the decision it was for.
+  const [advice, setAdvice] = useState<{ decision: string; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
   const [hints, setHints] = useStoredToggle("namretep:hints", false);
@@ -347,6 +350,22 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
     apply(playAction(tableId, round.roundId, round.version, type, hints));
   }
 
+  function askHint() {
+    if (!round || pending || busy || !canAskHint) return;
+    const forDecision = decision;
+    startTransition(async () => {
+      const result = await hintAction(tableId, round.roundId);
+      accept(result.view);
+      setError(result.ok ? null : (result.error ?? "Something went wrong."));
+      if (result.advice) {
+        setAdvice({
+          decision: forDecision,
+          text: `Book play: ${actionLabel(result.advice.bookAction)} (${result.advice.situation})`,
+        });
+      }
+    });
+  }
+
   async function copyInvite() {
     if (!table.inviteCode) return;
     try {
@@ -375,6 +394,15 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
   }
   const myMove = Boolean(round && round.actions.length > 0);
   const myRoundSeat = round && round.seat >= 0 ? round.view.seats[round.seat] : null;
+  // Identifies the decision being made, so a hint disappears once it's been acted on.
+  const decision =
+    round && myRoundSeat
+      ? `${round.roundId}:${round.view.phase}:${round.view.turn?.hand ?? 0}:${myRoundSeat.hands.length}:${
+          myRoundSeat.hands[round.view.turn?.hand ?? 0]?.cards.length ?? 0
+        }`
+      : "";
+  const shownAdvice = advice?.decision === decision ? advice.text : null;
+  const canAskHint = myMove && round!.actions.length > 1 && !shownAdvice;
   const playerHasBlackjack = myRoundSeat ? isTwoCard21(myRoundSeat.hands[0].cards) && !myRoundSeat.hands[0].fromSplit : false;
 
   function actionCost(type: ActionType): number {
@@ -421,6 +449,11 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
       if (e.key === "Enter" && bettingOpen && (tag === "BODY" || tag === "MAIN")) {
         e.preventDefault();
         placeBet();
+        return;
+      }
+      if (e.key.toLowerCase() === "b" && canAskHint) {
+        e.preventDefault();
+        askHint();
         return;
       }
       const type = KEY_ACTIONS[e.key.toLowerCase()];
@@ -600,6 +633,9 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
           </p>
         )}
         {round?.view.phase === "settled" && myRoundSeat && resultsShown && <ResultLine net={seatNet(myRoundSeat)} />}
+        {round?.view.phase === "settled" && myRoundSeat?.hintUsed && resultsShown && (
+          <p className="text-xs text-starlight/70">Hint used: this round wasn&apos;t counted in your stats.</p>
+        )}
         {hint && !busy && (
           <p className="rounded border-2 border-neon-gold bg-neon-gold/10 px-3 py-1.5 text-sm text-starlight">{hint}</p>
         )}
@@ -612,6 +648,9 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
 
       {/* Controls */}
       <div className="pixel-panel flex flex-col items-center gap-4 p-4 sm:p-5">
+        {round && round.view.phase !== "settled" && myRoundSeat?.hintUsed && (
+          <p className="text-center text-xs text-neon-gold">Hint used: this round won&apos;t count toward your stats.</p>
+        )}
         {!mySeat ? (
           <p className="text-center text-starlight/80">
             You&apos;re watching.{" "}
@@ -646,7 +685,29 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
                     </button>
                   );
                 })}
+                {canAskHint && (
+                  <button
+                    type="button"
+                    disabled={pending || busy}
+                    onClick={askHint}
+                    aria-keyshortcuts="B"
+                    className="pixel-btn bg-space-800 text-neon-gold disabled:opacity-50"
+                  >
+                    Hint
+                    <kbd className="kbd" aria-hidden>
+                      B
+                    </kbd>
+                  </button>
+                )}
               </div>
+              {shownAdvice && (
+                <p role="status" className="rounded border-2 border-neon-gold bg-neon-gold/10 px-3 py-1.5 text-sm text-starlight">
+                  {shownAdvice}
+                </p>
+              )}
+              {canAskHint && !myRoundSeat?.hintUsed && (
+                <p className="text-center text-xs text-starlight/70">Using a hint takes this round out of your stats.</p>
+              )}
             </>
           ) : (
             <p className="text-center text-starlight/80">

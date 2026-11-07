@@ -44,6 +44,8 @@ export type Seat = {
   insuranceReturned?: number;
   /** Has made (or didn't need to make) the pre-peek choice: insurance / early surrender. */
   earlyDecided: boolean;
+  /** Asked for a hint before acting: this round doesn't count toward the player's stats. */
+  hintUsed?: boolean;
 };
 
 /**

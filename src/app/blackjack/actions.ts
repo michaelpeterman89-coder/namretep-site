@@ -9,6 +9,7 @@ import {
   placeBet,
   runTimeouts,
   takeAction,
+  takeHint,
   type RoundForPlayer,
   type TableView,
 } from "@/server/blackjack";
@@ -65,6 +66,7 @@ export type TableResult = {
   /** The latest table state (also sent on errors, so the screen can resync). */
   view: TableView | null;
   feedback?: RoundForPlayer["feedback"];
+  advice?: RoundForPlayer["advice"];
 };
 
 /**
@@ -84,7 +86,7 @@ async function run(
   try {
     const result = await work(table, player.id);
     const latest = (await getBlackjackTable(tableId)) ?? table;
-    return { ok: true, view: await getTableView(latest, player.id), feedback: result?.feedback ?? null };
+    return { ok: true, view: await getTableView(latest, player.id), feedback: result?.feedback ?? null, advice: result?.advice };
   } catch (e) {
     if (!(e instanceof GameError)) throw e;
     const latest = (await getBlackjackTable(tableId)) ?? table;
@@ -123,6 +125,13 @@ export async function playAction(
       throw new GameError("That move isn't allowed right now.");
     }
     return takeAction(table, playerId, roundId, version as number, type as ActionType, hintsEnabled === true);
+  });
+}
+
+export async function hintAction(tableId: unknown, roundId: unknown): Promise<TableResult> {
+  return run(tableId, async (table, playerId) => {
+    if (!isId(roundId)) throw new GameError("That hand is over. Refreshing…");
+    return takeHint(table, playerId, roundId);
   });
 }
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Card, Shoe } from "./cards";
 import { applyAction, startRound } from "./engine";
 import { DEFAULT_RULES, type BlackjackRules } from "./rules";
-import { judgeDecision, roundStats } from "./stats";
+import { bookFor, judgeDecision, roundStats, withHintUsed } from "./stats";
 
 const rules: BlackjackRules = { ...DEFAULT_RULES, insurance: true };
 
@@ -91,5 +91,58 @@ describe("judgeDecision", () => {
   it("skips moves with no real choice and finished rounds", () => {
     const settled = deal(["As", "9d", "Kh", "8c"]);
     expect(judgeDecision(rules, settled, { type: "stand", seat: 0 }, false)).toBeNull();
+  });
+});
+
+describe("hints before acting", () => {
+  // Deal order: player, dealer up, player, dealer hole. The player has 16 against a dealer 10.
+  const hand = () => deal(["Ts", "Td", "6h", "8c", "Kd", "Kc", "Qc"]);
+
+  it("gives the book play from the player's cards and the upcard", () => {
+    expect(bookFor(rules, hand(), 0)).toMatchObject({ action: "surrender", situation: "Hard 16 vs 10" });
+  });
+
+  it("doesn't depend on the dealer's hidden card", () => {
+    const other = deal(["Ts", "Td", "6h", "2c", "Kd", "Kc", "Qc"]);
+    expect(bookFor(rules, other, 0)).toEqual(bookFor(rules, hand(), 0));
+  });
+
+  it("gives nothing when it isn't the player's move, or the round is over", () => {
+    const twoSeats = startRound(rules, stacked(["Ts", "9d", "Td", "6h", "8c", "Kd", "Kc", "Qc"]), [
+      { playerId: "p1", bet: 100 },
+      { playerId: "p2", bet: 100 },
+    ]);
+    expect(bookFor(rules, twoSeats, 1)).toBeNull();
+    expect(bookFor(rules, twoSeats, 5)).toBeNull();
+    const settled = applyAction(rules, hand(), { type: "stand", seat: 0 });
+    expect(settled.phase).toBe("settled");
+    expect(bookFor(rules, settled, 0)).toBeNull();
+  });
+
+  it("stays marked through the round, and the seat is left out of the stats", () => {
+    const hinted = withHintUsed(hand(), 0);
+    expect(hand().seats[0].hintUsed).toBeUndefined();
+    const settled = applyAction(rules, hinted, { type: "stand", seat: 0 });
+    expect(settled.seats[0].hintUsed).toBe(true);
+    expect(roundStats(rules, settled)).toEqual([]);
+    expect(roundStats(rules, applyAction(rules, hand(), { type: "stand", seat: 0 }))).toHaveLength(1);
+  });
+
+  it("only leaves out the player who asked", () => {
+    const round = startRound(rules, stacked(["Ts", "9d", "Td", "9c", "9h", "Kd"]), [
+      { playerId: "p1", bet: 100 },
+      { playerId: "p2", bet: 100 },
+    ]);
+    let next = withHintUsed(round, 0);
+    next = applyAction(rules, next, { type: "stand", seat: 0 });
+    next = applyAction(rules, next, { type: "stand", seat: 1 });
+    expect(next.phase).toBe("settled");
+    expect(roundStats(rules, next).map((s) => s.player_id)).toEqual(["p2"]);
+  });
+
+  it("flags later decisions so they don't count toward On Book %", () => {
+    const action = { type: "stand", seat: 0 } as const;
+    expect(judgeDecision(rules, hand(), action, false)?.hints_enabled).toBe(false);
+    expect(judgeDecision(rules, withHintUsed(hand(), 0), action, false)?.hints_enabled).toBe(true);
   });
 });

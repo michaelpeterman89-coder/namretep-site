@@ -6,12 +6,14 @@ import {
   betChanges,
   BETTING_SECONDS,
   IllegalActionError,
+  bookFor,
   judgeDecision,
   legalActions,
   nextDeadline,
   payoutChanges,
   publicView,
   roundStats,
+  withHintUsed,
   seatsToDeal,
   startRound,
   type ActionType,
@@ -50,6 +52,8 @@ export type RoundForPlayer = {
   deadline: string | null;
   /** How the player's last action compared with basic strategy (null if there was no real choice). */
   feedback?: { onBook: boolean; bookAction: ActionType; situation: string } | null;
+  /** The book play for a hint the player just asked for. */
+  advice?: { bookAction: ActionType; situation: string };
 };
 
 type StoredRound = { id: string; version: number; round: BlackjackRound; deadline: Date | null };
@@ -310,6 +314,57 @@ export async function takeAction(
       if (err.message?.includes("STALE_ROUND") && stored.round.phase === "early") continue;
       throw friendlyDbError(err);
     }
+  }
+  throw new GameError("The table is busy. Please try again.");
+}
+
+/**
+ * Gives the player the book play for their current decision and takes this
+ * round out of their stats: the seat is marked (so the result and any later
+ * decisions don't count) and decisions already made this round are flagged.
+ * The turn timer keeps running.
+ */
+export async function takeHint(table: BlackjackTable, playerId: string, roundId: string): Promise<RoundForPlayer> {
+  const admin = createAdminClient();
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const stored = await getLatestRound(table.id);
+    if (!stored || stored.id !== roundId) throw new GameError("That hand is over. Refreshing…");
+    const seat = stored.round.seats.findIndex((s) => s.playerId === playerId);
+    if (seat < 0) throw new GameError("You're not playing this hand.");
+    const book = bookFor(table.rules, stored.round, seat);
+    if (!book) throw new GameError("There's no decision to make right now.");
+
+    if (!stored.round.seats[seat].hintUsed) {
+      const next = withHintUsed(stored.round, seat);
+      const { error } = await admin.rpc("bj_act", {
+        p_round_id: stored.id,
+        p_version: stored.version,
+        p_phase: next.phase,
+        p_public: publicView(next),
+        p_secret: next,
+        p_chips: [],
+        p_decisions: [],
+        p_stats: [],
+        p_deadline: orNull(stored.deadline?.toISOString()),
+        p_actor: orNull(null),
+        p_timed_out: [],
+      });
+      if (error) {
+        // Someone else's move landed first: look again.
+        if (error.message.includes("STALE_ROUND")) continue;
+        throw friendlyDbError(error);
+      }
+    }
+
+    const { error } = await admin
+      .from("blackjack_decisions")
+      .update({ hints_enabled: true })
+      .eq("round_id", stored.id)
+      .eq("player_id", playerId);
+    if (error) throw friendlyDbError(error);
+
+    const latest = await getLatestRound(table.id);
+    return { ...forPlayer(table, latest ?? stored, playerId), advice: { bookAction: book.action, situation: book.situation } };
   }
   throw new GameError("The table is busy. Please try again.");
 }

@@ -95,8 +95,14 @@ export function BlackjackGuide() {
           situations you miss most (like &ldquo;soft 18 vs dealer 9&rdquo;).
         </p>
         <p>
-          Turn on <strong>Show hints</strong> at the table to see the book play after a mistake. Hands played with hints
-          on are counted separately so they don&apos;t inflate your score.
+          Stuck? Press <strong>Hint</strong> on your turn to see the book play before you act. That whole round then
+          doesn&apos;t count toward your stats: not hands played, wins, net chips, or On Book %. Your chips still change
+          as usual, and so does your place on the Leaders page.
+        </p>
+        <p>
+          You can also turn on <strong>Show a hint after a mistake</strong> at the table to see the book play after a
+          wrong move. Decisions made with that on don&apos;t count toward your On Book %, but the hand still counts in your
+          other stats.
         </p>
       </Section>
 
@@ -120,6 +126,7 @@ export function BlackjackGuide() {
             ["R", "Surrender"],
             ["I", "Insurance"],
             ["N", "No insurance"],
+            ["B", "Hint (takes the round out of your stats)"],
           ]}
         />
       </Section>
