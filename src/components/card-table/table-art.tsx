@@ -1,59 +1,7 @@
 import type { BlackjackRules } from "@/lib/games/blackjack/rules";
 
-// Original pixel art for the blackjack table: the alien dealer's hands and
-// the printed felt markings. Drawn as SVG so they stay crisp at any size.
-
-// Each character is one pixel. Edit the grid to change the drawing.
-const HAND_PIXELS = [
-  "..kkkkkkkkkk..",
-  "..kssssssssk..",
-  "..ksSsssSssk..",
-  "..kssssssssk..",
-  ".kkcccccccckk.",
-  ".kggggggggggk.",
-  "kgghggggggggk.",
-  "kghgggggggggdk",
-  "kggggggggggddk",
-  ".kggggggggddk.",
-  ".kggkkggkkggk.",
-  ".kgdkkgdkkgdk.",
-  ".kgdkkgdkkgdk.",
-  ".kgdkkgdkkgdk.",
-  ".knnkkgdkknnk.",
-  "..kk.knnk.kk..",
-  "......kk......",
-];
-
-const HAND_COLORS: Record<string, string> = {
-  k: "#0a0716", // outline
-  s: "#7b3eff", // sleeve
-  S: "#4a1fb0", // sleeve shadow
-  c: "#ffcf3e", // gold cuff
-  g: "#5cf2a6", // skin
-  h: "#c4ffe0", // skin highlight
-  d: "#2bb58a", // skin shadow
-  n: "#3ef0ff", // glowing fingertips
-};
-
-/** One of the alien dealer's hands, resting on the table edge. */
-export function AlienHand({ side }: { side: "left" | "right" }) {
-  const width = HAND_PIXELS[0].length;
-  const height = HAND_PIXELS.length;
-  return (
-    <svg
-      aria-hidden
-      viewBox={`0 0 ${width} ${height}`}
-      shapeRendering="crispEdges"
-      className={`alien-hand alien-hand-${side}`}
-    >
-      {HAND_PIXELS.flatMap((row, y) =>
-        [...row].map((pixel, x) =>
-          pixel === "." ? null : <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill={HAND_COLORS[pixel]} />,
-        ),
-      )}
-    </svg>
-  );
-}
+// The printed felt markings for the blackjack table. Drawn as SVG so they stay
+// crisp at any size.
 
 /**
  * The rules printed on the felt in curved text, like a real table. On narrow

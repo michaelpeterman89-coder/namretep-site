@@ -5,28 +5,22 @@ import { Field, FormMessage, SubmitButton } from "@/components/form";
 import {
   DECK_OPTIONS,
   DEFAULT_RULES,
+  EURO_NO_HOLE_CARD_RULES,
   houseEdge,
   PENETRATION_MAX,
   PENETRATION_MIN,
   rulesSummary,
+  SINGLE_DECK_RULES,
+  TOURIST_TRAP_RULES,
   type BlackjackRules,
 } from "@/lib/games/blackjack/rules";
 import { createTableAction, type CreateTableState } from "../actions";
 
 const PRESETS: { name: string; rules: BlackjackRules }[] = [
   { name: "Classic Strip", rules: DEFAULT_RULES },
-  {
-    name: "Single deck",
-    rules: { ...DEFAULT_RULES, decks: 1, dealerHitsSoft17: true, doubleAfterSplit: false, maxSplitHands: 2, surrender: "none" },
-  },
-  {
-    name: "Euro no-hole-card",
-    rules: { ...DEFAULT_RULES, dealerPeeks: false, doubleOn: "9-11", maxSplitHands: 2, surrender: "none" },
-  },
-  {
-    name: "Tourist trap 6:5",
-    rules: { ...DEFAULT_RULES, decks: 8, dealerHitsSoft17: true, blackjackPayout: "6:5", surrender: "none" },
-  },
+  { name: "Single deck", rules: SINGLE_DECK_RULES },
+  { name: "Euro no-hole-card", rules: EURO_NO_HOLE_CARD_RULES },
+  { name: "Tourist trap 6:5", rules: TOURIST_TRAP_RULES },
 ];
 
 function Choice<T extends string | number>({

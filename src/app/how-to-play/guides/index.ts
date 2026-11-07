@@ -25,6 +25,7 @@ export const GUIDES: Record<GameKey, Guide> = {
       ["payouts", "Payouts"],
       ["settings", "Settings"],
       ["on-book", "On Book %"],
+      ["book-charts", "Book charts"],
       ["controls", "Controls"],
       ["tips", "Tips"],
     ],

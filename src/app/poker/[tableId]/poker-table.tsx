@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/avatar";
 import { GuideLink } from "@/components/guide-link";
 import { ChipStack } from "@/components/chip";
-import { DealContext, DealtCard, EMPTY_PLAN, prefersReducedMotion, Shoe, type DealPlan } from "@/components/card-table/dealing";
+import { ChipRack, DealContext, DealtCard, EMPTY_PLAN, prefersReducedMotion, Shoe, type DealPlan } from "@/components/card-table/dealing";
 import { cardLabel } from "@/components/playing-card";
 import { TickingNumber } from "@/components/ticking-number";
 import { formatChips, formatLimits } from "@/lib/chips";
@@ -21,7 +21,6 @@ import {
   pokerPlayAction,
   type PokerResult,
 } from "../actions";
-import { ChipRack } from "./chip-rack";
 import { boardSlot, computePokerPlan, holeSlot } from "./poker-dealing";
 import { seatPosition } from "./seat-layout";
 
@@ -350,7 +349,7 @@ export function PokerTableView({ initialView }: { initialView: PokerView }) {
         <section aria-label="Poker table" className="relative mx-auto aspect-[4/5] w-full max-w-5xl sm:aspect-[16/9]">
           <div className="poker-felt absolute inset-x-[6%] inset-y-[9%]" />
           {/* The house: chip rack at the top centre, deck beside it. Seats leave this spot free. */}
-          <ChipRack className="top-[7%] left-1/2 -translate-x-1/2 sm:top-[11%]" />
+          <ChipRack className="absolute top-[7%] left-1/2 -translate-x-1/2 sm:top-[11%]" />
           <Shoe
             cardsLeft={null}
             className="top-[18%] left-1/2 -translate-x-1/2 sm:top-[12%] sm:left-[calc(50%+6.25rem)] sm:translate-x-0"

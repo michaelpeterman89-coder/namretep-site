@@ -1,4 +1,5 @@
 import { Bullets, Keys, PayTable, Section, Settings, Steps, Tip } from "../guide-parts";
+import { BookCharts } from "./blackjack-book-charts";
 
 export function BlackjackGuide() {
   return (
@@ -105,6 +106,10 @@ export function BlackjackGuide() {
           wrong move. Decisions made with that on don&apos;t count toward your On Book %, but the hand still counts in your
           other stats.
         </p>
+      </Section>
+
+      <Section id="book-charts" title="Book play charts">
+        <BookCharts />
       </Section>
 
       <Section id="multiplayer" title="Playing with others">

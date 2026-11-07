@@ -74,6 +74,11 @@ export function addBet(
   const notOffered = betNotOffered(rules, kind);
   if (notOffered) throw new IllegalBaccaratBet(notOffered);
   if (!Number.isSafeInteger(amount) || amount < 1) throw new IllegalBaccaratBet("Bets must be at least 1 chip.");
+  // Like casino rulebooks: back Player or Banker, not both. The Tie can go with either.
+  const opposite = kind === "player" ? "banker" : kind === "banker" ? "player" : null;
+  if (opposite && state.bets.some((b) => b.playerId === playerId && b.kind === opposite)) {
+    throw new IllegalBaccaratBet("You can't bet on both Player and Banker in the same hand. Clear your bets to switch sides.");
+  }
   const existing = state.bets.find((b) => b.playerId === playerId && b.kind === kind);
   const total = (existing?.amount ?? 0) + amount;
   // The table minimum is for Player and Banker; the Tie and side bets need only 1 chip.

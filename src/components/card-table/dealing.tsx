@@ -290,13 +290,13 @@ export function MovingStack({
   );
 }
 
-/** The dealer's chip rack, where lost bets go and payouts come from. */
-export function ChipTray() {
+/** The house chip rack, where lost bets go and payouts come from. */
+export function ChipRack({ className = "" }: { className?: string }) {
   const { trayRef } = useContext(DealContext);
   return (
-    <div ref={trayRef} className="chip-tray" aria-hidden>
-      {DENOMINATIONS.slice(0, 6).map((d) => (
-        <span key={d.value} style={{ background: d.face }} />
+    <div ref={trayRef} className={`chip-rack ${className}`} aria-hidden>
+      {DENOMINATIONS.slice(0, 8).map((d) => (
+        <span key={d.value} style={{ "--face": d.face, "--edge": d.edge } as React.CSSProperties} />
       ))}
     </div>
   );

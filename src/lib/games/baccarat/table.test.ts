@@ -33,12 +33,22 @@ describe("betting", () => {
     expect(() => addBet(s, R, LIMITS, "a", "dragon7", 5)).toThrow(IllegalBaccaratBet);
   });
 
+  it("lets a player back Player or Banker, not both, and add the Tie to either", () => {
+    let s = addBet(newBaccaratState(416), R, LIMITS, "a", "banker", 20);
+    expect(() => addBet(s, R, LIMITS, "a", "player", 20)).toThrow(/both Player and Banker/);
+    s = addBet(s, R, LIMITS, "a", "tie", 5);
+    s = addBet(s, R, LIMITS, "b", "player", 20);
+    expect(s.bets.map((b) => `${b.playerId}:${b.kind}`)).toEqual(["a:banker", "a:tie", "b:player"]);
+    const cleared = removeBets(s, "a").state;
+    expect(addBet(cleared, R, LIMITS, "a", "player", 20).bets).toContainEqual({ playerId: "a", kind: "player", amount: 20 });
+  });
+
   it("has no ceiling when the table has no maximum, but keeps the minimum", () => {
     const open = { minBet: 10, maxBet: null };
     const s = addBet(newBaccaratState(416), R, open, "a", "banker", 5_000_000);
     expect(addBet(s, R, open, "a", "banker", 5_000_000).bets[0].amount).toBe(10_000_000);
-    expect(() => addBet(s, R, open, "a", "player", 5)).toThrow(/minimum/);
-    expect(() => addBet(s, R, open, "a", "player", 1e30)).toThrow(IllegalBaccaratBet);
+    expect(() => addBet(s, R, open, "b", "player", 5)).toThrow(/minimum/);
+    expect(() => addBet(s, R, open, "b", "player", 1e30)).toThrow(IllegalBaccaratBet);
   });
 
   it("takes bets down and returns the chips", () => {
@@ -67,20 +77,18 @@ describe("betting", () => {
 describe("dealing", () => {
   it("deals, pays every bet, records the road, and clears the felt", () => {
     let s = addBet(newBaccaratState(SHOE.length), R, LIMITS, "a", "banker", 100);
-    s = addBet(s, R, LIMITS, "a", "player", 20);
+    s = addBet(s, R, LIMITS, "c", "player", 20);
     s = addBet(s, R, LIMITS, "b", "playerPair", 5);
     const out = dealAndSettle(s, R, SHOE, () => SHOE, NOW);
     expect(out.hand).toMatchObject({ playerTotal: 8, bankerTotal: 9, winner: "banker", natural: true });
-    expect(out.credits.get("a")).toBe(195); // 100 + 95 (5% commission); the Player bet lost
+    expect(out.credits.get("a")).toBe(195); // 100 + 95 (5% commission)
+    expect(out.credits.get("c")).toBeUndefined(); // the Player bet lost
     expect(out.credits.get("b")).toBe(60); // pair of 4s pays 11:1
     expect(out.state.bets).toEqual([]);
     expect(out.state.history).toEqual([{ winner: "banker", playerPair: true, bankerPair: false, natural: true, total: 9 }]);
     expect(out.state.cardsLeft).toBe(SHOE.length - 4);
     expect(out.shoe).toHaveLength(SHOE.length - 4);
-    expect(lastBetsOf(out.state, "a")).toEqual([
-      { playerId: "a", kind: "banker", amount: 100 },
-      { playerId: "a", kind: "player", amount: 20 },
-    ]);
+    expect(lastBetsOf(out.state, "a")).toEqual([{ playerId: "a", kind: "banker", amount: 100 }]);
   });
 
   it("starts a fresh shoe (and a fresh scoreboard) at the cut card", () => {

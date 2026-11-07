@@ -68,7 +68,8 @@ export function BaccaratGuide() {
           ]}
         />
         <p className="text-sm text-starlight/70">
-          The table minimum applies to Player and Banker; the Tie and side bets can be as small as 1 chip. Some tables have
+          You can bet on Player or Banker in a hand, but not both; the Tie can go with either. The table minimum applies to
+          Player and Banker; the Tie and side bets can be as small as 1 chip. Some tables have
           no maximum, so you can bet as much as you have.
         </p>
       </Section>

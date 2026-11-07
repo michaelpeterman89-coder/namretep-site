@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { cardValue, type Card } from "./cards";
-import type { ActionType } from "./engine";
-import { DEFAULT_RULES, type BlackjackRules } from "./rules";
-import { bookDecision, strategyChart } from "./strategy";
+import { legalActions, startRound, type ActionType } from "./engine";
+import { DEFAULT_RULES, EURO_NO_HOLE_CARD_RULES, SINGLE_DECK_RULES, TOURIST_TRAP_RULES, type BlackjackRules } from "./rules";
+import { bookChartEntry, bookDecision, strategyChart, type RowKey } from "./strategy";
 
 // Expected plays come from widely published basic-strategy charts.
 
@@ -196,5 +196,62 @@ describe("performance", () => {
     const start = performance.now();
     strategyChart(rules({ decks: 8, dealerHitsSoft17: true, doubleOn: "10-11" }));
     expect(performance.now() - start).toBeLessThan(3000);
+  });
+});
+
+describe("printed book charts", () => {
+  it("shows the published plays and what to do if they aren't available", () => {
+    expect(bookChartEntry(SHOE, "H16", 10)).toEqual({ play: "surrender", otherwise: "hit" });
+    expect(bookChartEntry(SHOE, "H11", 1).play).toBe("hit");
+    expect(bookChartEntry(SHOE, "S18", 2).play).toBe("stand");
+    expect(bookChartEntry(SHOE, "S18", 3)).toEqual({ play: "double", otherwise: "stand" });
+    expect(bookChartEntry(SHOE, "H10", 9)).toEqual({ play: "double", otherwise: "hit" });
+    expect(bookChartEntry(SHOE, "P8", 1)).toEqual({ play: "split", otherwise: null });
+    expect(bookChartEntry(SHOE, "P9", 7).play).toBe("stand");
+
+    expect(bookChartEntry(SHOE_H17, "H11", 1)).toEqual({ play: "double", otherwise: "hit" });
+    expect(bookChartEntry(SHOE_H17, "S18", 2)).toEqual({ play: "double", otherwise: "stand" });
+    expect(bookChartEntry(SHOE_H17, "H17", 1)).toEqual({ play: "surrender", otherwise: "stand" });
+    expect(bookChartEntry(SHOE_H17, "P8", 1)).toEqual({ play: "surrender", otherwise: "split" });
+  });
+
+  it("only doubles where the table allows it", () => {
+    const tens = rules({ doubleOn: "10-11" });
+    expect(bookChartEntry(tens, "H9", 5).play).toBe("hit");
+    expect(bookChartEntry(tens, "S18", 5).play).toBe("stand");
+    expect(bookChartEntry(tens, "P5", 5).play).toBe("double");
+  });
+
+  /** A real round with this hand, so the legal plays come from the engine. */
+  function chartMatchesTable(r: BlackjackRules, row: RowKey, cards: Card[], up: number, canSplit: boolean) {
+    const table = { ...r, insurance: false };
+    const upcard = up === 1 ? "Ac" : up === 10 ? "Tc" : (`${up}c` as Card);
+    const size = r.decks * 52;
+    const shoe = { cards: [cards[0], upcard, cards[1], "5c" as Card, ...Array<Card>(size - 4).fill("2c")], size };
+    const round = startRound(table, shoe, [{ playerId: "p", bet: 10 }]);
+    const legal = legalActions(table, round, 0).filter((a) => canSplit || a !== "split");
+    const decision = bookDecision(table, { phase: "playing", cards, dealerUpcard: upcard, legal });
+    expect(`${row} vs ${up}: ${bookChartEntry(table, row, up).play}`).toBe(`${row} vs ${up}: ${decision?.action}`);
+  }
+
+  const card = (value: number, suit: string) => `${value === 1 ? "A" : value === 10 ? "T" : value}${suit}` as Card;
+
+  it.each([
+    ["6 decks S17", SHOE],
+    ["6 decks H17", SHOE_H17],
+    ["8 decks", TOURIST_TRAP_RULES],
+    ["2 decks", rules({ decks: 2, dealerHitsSoft17: true, surrender: "none" })],
+    ["single deck", SINGLE_DECK_RULES],
+    ["European", EURO_NO_HOLE_CARD_RULES],
+  ])("agrees with the book the table scores you against: %s", (_name, r) => {
+    for (let up = 1; up <= 10; up++) {
+      for (let t = 5; t <= 20; t++) {
+        const first = t === 20 ? 10 : t > 12 ? t - 10 : t - 2;
+        const second = t === 20 ? 10 : t > 12 ? 10 : 2;
+        chartMatchesTable(r, `H${t}`, [card(first, "s"), card(second, "h")], up, false);
+      }
+      for (let t = 13; t <= 20; t++) chartMatchesTable(r, `S${t}`, [card(1, "s"), card(t - 11, "h")], up, false);
+      for (let n = 1; n <= 10; n++) chartMatchesTable(r, `P${n}`, [card(n, "s"), card(n, "h")], up, true);
+    }
   });
 });

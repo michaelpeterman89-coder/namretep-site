@@ -539,7 +539,9 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
                 onClick={() => bet(s.kind)}
                 disabled={!seated || dealingNow}
                 aria-label={`${s.label}, pays ${s.pays}${mine ? `, your bet ${formatChips(mine)}` : ""}`}
-                className={`craps-spot min-h-24 ${c.border} ${result?.outcome === "win" ? "craps-spot-won" : ""}`}
+                className={`craps-spot min-h-24 ${c.border} ${result?.outcome === "win" ? "craps-spot-won" : ""} ${
+                  myBets.some((b) => b.kind === (s.kind === "player" ? "banker" : s.kind === "banker" ? "player" : null)) ? "opacity-50" : ""
+                }`}
               >
                 <span className={`font-display text-xs sm:text-sm ${c.text}`}>{s.label}</span>
                 <span className="text-[0.65rem] text-starlight/60">{s.pays}</span>

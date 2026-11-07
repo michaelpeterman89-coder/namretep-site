@@ -453,33 +453,6 @@ input:focus-visible,
   background: rgb(6 4 26 / 0.25);
 }
 
-/* The alien dealer's hands, resting on the table edge either side of the tray. */
-.alien-hand {
-  position: absolute;
-  top: 0.25rem;
-  display: none;
-  width: 4.5rem;
-  height: auto;
-  filter: drop-shadow(3px 3px 0 rgb(10 7 22 / 0.6));
-  pointer-events: none;
-}
-
-.alien-hand-left {
-  right: calc(50% + 7.5rem);
-  transform: rotate(8deg);
-}
-
-.alien-hand-right {
-  left: calc(50% + 7.5rem);
-  transform: scaleX(-1) rotate(8deg);
-}
-
-@media (min-width: 640px) {
-  .alien-hand {
-    display: block;
-  }
-}
-
 /* ---------- Chips (see components/chip.tsx) ---------- */
 
 .chip {
@@ -535,24 +508,7 @@ button:focus-visible > .chip {
 }
 
 /* The dealer's chip tray and the discard tray, opposite the shoe. */
-.chip-tray {
-  display: flex;
-  gap: 2px;
-  padding: 3px 5px;
-  border: 3px solid var(--color-ink);
-  border-radius: 6px;
-  background: var(--color-space-950);
-  box-shadow: 3px 3px 0 var(--color-ink);
-}
-
-.chip-tray > span {
-  width: 0.5rem;
-  height: 1rem;
-  border: 1.5px solid var(--color-ink);
-  border-radius: 2px;
-}
-
-/* Poker: the house chip rack, columns of chips seen from above. */
+/* The house chip rack, columns of chips seen from above. */
 .chip-rack {
   display: flex;
   gap: 2px;

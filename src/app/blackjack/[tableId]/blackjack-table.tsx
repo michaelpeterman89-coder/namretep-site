@@ -30,7 +30,7 @@ import {
 import { Chip, ChipStack, DENOMINATIONS } from "@/components/chip";
 import {
   alreadyCleared,
-  ChipTray,
+  ChipRack,
   computePlan,
   computeSettlement,
   DealContext,
@@ -46,7 +46,7 @@ import {
   type DealPlan,
   type Settlement,
 } from "@/components/card-table/dealing";
-import { AlienHand, FeltMarkings, seatArcOffset } from "@/components/card-table/table-art";
+import { FeltMarkings, seatArcOffset } from "@/components/card-table/table-art";
 
 const ACTION_LABELS: Record<ActionType, string> = {
   hit: "Hit",
@@ -555,12 +555,10 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
           bigWin ? "table-shake" : ""
         }`}
       >
-        <AlienHand side="left" />
-        <AlienHand side="right" />
         <Shoe cardsLeft={round ? round.view.cardsLeftInShoe : null} />
         <DiscardTray />
         <div className="flex flex-col items-center gap-2">
-          <ChipTray />
+          <ChipRack />
           <span className="font-display text-[0.6rem] text-starlight/70">Dealer</span>
           <div className="card-fan flex min-h-20 sm:min-h-28">
             {displayRound &&

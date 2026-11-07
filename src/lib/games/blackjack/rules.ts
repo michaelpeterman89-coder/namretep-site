@@ -41,6 +41,31 @@ export const DEFAULT_RULES: BlackjackRules = {
   penetration: 0.75,
 };
 
+export const SINGLE_DECK_RULES: BlackjackRules = {
+  ...DEFAULT_RULES,
+  decks: 1,
+  dealerHitsSoft17: true,
+  doubleAfterSplit: false,
+  maxSplitHands: 2,
+  surrender: "none",
+};
+
+export const EURO_NO_HOLE_CARD_RULES: BlackjackRules = {
+  ...DEFAULT_RULES,
+  dealerPeeks: false,
+  doubleOn: "9-11",
+  maxSplitHands: 2,
+  surrender: "none",
+};
+
+export const TOURIST_TRAP_RULES: BlackjackRules = {
+  ...DEFAULT_RULES,
+  decks: 8,
+  dealerHitsSoft17: true,
+  blackjackPayout: "6:5",
+  surrender: "none",
+};
+
 /** Blackjack payout as [numerator, denominator], e.g. 3:2 -> [3, 2]. */
 export function payoutRatio(payout: BlackjackRules["blackjackPayout"]): [number, number] {
   const [num, den] = payout.split(":").map(Number);

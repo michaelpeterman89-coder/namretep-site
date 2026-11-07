@@ -13,7 +13,7 @@ import type { BlackjackRules } from "./rules";
 // dealt, so it's a chart a person could memorize (total-dependent strategy).
 
 type Counts = number[]; // index 1..10 = card value (1 = ace, 10 = any ten-value card)
-type Play = "stand" | "hit" | "double" | "split" | "surrender";
+export type Play = "stand" | "hit" | "double" | "split" | "surrender";
 type PlayEVs = Record<Play, number>;
 
 const VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
@@ -355,6 +355,35 @@ export function bookDecision(rules: BlackjackRules, input: BookInput): BookDecis
     }
   }
   return { action: bestAction, key: `${row}v${up}`, situation: `${rowLabel(row)} vs ${upLabel}` };
+}
+
+// ---------- Printed charts ----------
+
+/** The play for a chart cell, and what to do when that play isn't available (after a third card, say). */
+export type BookChartEntry = { play: Play; otherwise: Play | null };
+
+function bestOf(evs: PlayEVs, plays: Play[]): Play {
+  return plays.reduce((best, play) => (evs[play] > evs[best] ? play : best));
+}
+
+/** One cell of a printed chart: the best play for a starting hand on this row against this upcard. */
+export function bookChartEntry(rules: BlackjackRules, row: RowKey, up: number): BookChartEntry {
+  const { evs } = strategyChart(rules)[row][up];
+  const n = Number(row.slice(1));
+  const kind = row[0];
+  const hard = kind === "P" ? (n === 1 ? 2 : n * 2) : kind === "S" ? n - 10 : n;
+  const hasAce = kind === "S" || row === "P1";
+
+  const allowed = PLAYS.filter((play) => {
+    if (play === "double") return canDoubleTotal(rules, hard, hasAce);
+    if (play === "split") return kind === "P";
+    if (play === "surrender") return rules.surrender !== "none";
+    return true;
+  });
+  const play = bestOf(evs, allowed);
+  if (play === "double") return { play, otherwise: bestOf(evs, ["stand", "hit"]) };
+  if (play === "surrender") return { play, otherwise: bestOf(evs, kind === "P" ? ["stand", "hit", "split"] : ["stand", "hit"]) };
+  return { play, otherwise: null };
 }
 
 /** Short label for an action, for hints and stats. */
