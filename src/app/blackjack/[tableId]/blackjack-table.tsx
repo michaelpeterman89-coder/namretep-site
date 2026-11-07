@@ -551,7 +551,8 @@ export function BlackjackTable({ initialView }: { initialView: TableView }) {
 
         <FeltMarkings rules={rules} />
 
-        <div className="flex w-full flex-wrap items-start justify-center gap-3 sm:gap-4">
+        {/* Seat 1 is on the far right (the dealer's left), so dealing and turns run right to left. */}
+        <div className="flex w-full flex-row-reverse flex-wrap items-start justify-center gap-3 sm:gap-4">
           {Array.from({ length: table.seats }, (_, seatNumber) => {
             const occupant = seats.find((s) => s.seatNumber === seatNumber) ?? null;
             return (
@@ -868,7 +869,7 @@ function SeatSpot({
       </div>
 
       {roundSeat ? (
-        <div className="flex flex-wrap justify-center gap-2">
+        <div className="flex flex-row-reverse flex-wrap justify-center gap-2">
           {roundSeat.hands.map((hand, i) => {
             const payAt = settlement?.payAt.get(handKey(roundSeat.playerId, i));
             const paid = payAt !== undefined && now >= payAt;
