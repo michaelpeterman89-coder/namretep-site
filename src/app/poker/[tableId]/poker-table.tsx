@@ -19,6 +19,7 @@ import {
   closePokerTableAction,
   leavePokerAction,
   pokerPlayAction,
+  showPokerHandAction,
   type PokerResult,
 } from "../actions";
 import { boardSlot, computePokerPlan, holeSlot } from "./poker-dealing";
@@ -92,11 +93,13 @@ export function PokerTableView({ initialView }: { initialView: PokerView }) {
     const reduced = prefersReducedMotion();
     setSynced((prev) => {
       const nextPlan = computePokerPlan(handLike(prev.view), handLike(next), reduced);
+      // Someone showing their cards after the hand shouldn't hide the results while they turn.
+      const alreadyOver = prev.view.hand?.id === next.hand?.id && prev.view.hand?.view.phase === "complete";
       return {
         view: next,
         offset: new Date(next.serverNow).getTime() - receivedAt,
         plan: nextPlan,
-        busyUntil: nextPlan.durationMs > 0 ? receivedAt + nextPlan.durationMs : prev.busyUntil,
+        busyUntil: nextPlan.durationMs > 0 && !alreadyOver ? receivedAt + nextPlan.durationMs : prev.busyUntil,
       };
     });
   }, []);
@@ -317,6 +320,7 @@ export function PokerTableView({ initialView }: { initialView: PokerView }) {
   }
 
   const results = finished && hv?.result ? hv.result.pots : [];
+  const canShow = Boolean(finished && hv?.result && meInHand && meInHand.hole.length > 0 && !hv.result.shown.includes(myIndex));
 
   return (
     <div className="flex flex-col gap-5">
@@ -407,6 +411,7 @@ export function PokerTableView({ initialView }: { initialView: PokerView }) {
                     secondsLeft={actor && occupant && actor.playerId === occupant.playerId && !occupant.isBot ? left : null}
                     lastAction={inHand?.folded ? "Folded" : finished && hv?.result?.hands[index] ? hv.result.hands[index] : actionLabel(lastEntry)}
                     winner={Boolean(finished && hv?.result?.pots.some((p) => p.winners.includes(index) && p.hand))}
+                    showing={Boolean(hv?.result?.shown.includes(index))}
                     canSit={me.seatNumber === null && !pending}
                     onSit={() =>
                       setBuying({
@@ -546,6 +551,16 @@ export function PokerTableView({ initialView }: { initialView: PokerView }) {
               </span>
             )}
             {left !== null && left > 0 ? `Next hand in ${left}s` : "Shuffling…"}
+            {canShow && (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => apply(showPokerHandAction(tableId, hand!.id))}
+                className="pixel-btn mx-auto mt-3 block bg-neon-gold text-ink"
+              >
+                Show my hand
+              </button>
+            )}
           </p>
         ) : (
           <p className="text-center text-starlight/80">Waiting for another player to sit down…</p>
@@ -610,6 +625,7 @@ function PokerSeat({
   secondsLeft,
   lastAction,
   winner,
+  showing,
   canSit,
   onSit,
 }: {
@@ -623,6 +639,8 @@ function PokerSeat({
   secondsLeft: number | null;
   lastAction: string | null;
   winner: boolean;
+  /** This player's cards are shown to the table (folded or not). */
+  showing: boolean;
   canSit: boolean;
   onSit: () => void;
 }) {
@@ -646,9 +664,9 @@ function PokerSeat({
     <div
       className={`flex w-[4.6rem] flex-col items-center gap-1 rounded-lg p-1 sm:w-28 ${
         isActing ? "bg-neon-cyan/15 ring-3 ring-neon-cyan" : winner ? "ring-3 ring-neon-gold" : ""
-      } ${folded ? "opacity-50" : ""}`}
+      } ${folded && !showing ? "opacity-50" : ""}`}
     >
-      {inHand && inHand.holeCount > 0 && !folded && (
+      {inHand && inHand.holeCount > 0 && (!folded || showing) && (
         // On phones, opponents' face-down cards are hidden to save space.
         <div className={`card-fan card-fan-sm ${isMe || inHand.hole.length > 0 ? "flex" : "hidden sm:flex"}`}>
           {Array.from({ length: inHand.holeCount }, (_, i) => (

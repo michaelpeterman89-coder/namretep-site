@@ -38,6 +38,10 @@ export function PokerGuide() {
             <strong>Showdown</strong>: players still in show their cards. The best five-card hand from your two cards
             plus the five shared cards wins the pot. If someone was all-in for less, side pots are split up fairly.
           </li>
+          <li>
+            Before the next hand, anyone dealt in can press <strong>Show my hand</strong> to show their cards, win or lose,
+            even if they folded.
+          </li>
         </Steps>
       </Section>
 

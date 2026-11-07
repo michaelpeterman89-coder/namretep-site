@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentPlayer } from "@/lib/auth";
 import type { PokerActionType } from "@/lib/games/poker";
-import { buyIn, createPokerTable, getPokerView, leaveTable, takePokerAction, type PokerView } from "@/server/poker";
+import { buyIn, createPokerTable, getPokerView, leaveTable, showPokerHand, takePokerAction, type PokerView } from "@/server/poker";
 import { canViewTable, closeTable, GameError, getPokerTable, isId, type PokerTable } from "@/server/tables";
 
 // Server actions are public endpoints: never trust the arguments' types.
@@ -82,6 +82,13 @@ export async function pokerPlayAction(
     }
     const raiseTo = type === "raise" ? Number(amount) : undefined;
     await takePokerAction(table, playerId, handId, version as number, type as PokerActionType, raiseTo);
+  });
+}
+
+export async function showPokerHandAction(tableId: unknown, handId: unknown): Promise<PokerResult> {
+  return run(tableId, async (table, playerId) => {
+    if (!isId(handId)) throw new GameError("That hand is over. Refreshing…");
+    await showPokerHand(table, playerId, handId);
   });
 }
 

@@ -23,7 +23,7 @@ async function Tables() {
         Open tables
       </h2>
       <p className="text-sm text-starlight/70">
-        Every open table, public and private. You can only close a table between hands.
+        Every open table, public and private. You can close a table at any time, even in the middle of a hand.
       </p>
       {tables.length === 0 ? (
         <p className="text-starlight/70">No tables are open.</p>

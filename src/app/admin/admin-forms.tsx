@@ -5,6 +5,7 @@ import { ConfirmForm } from "@/components/confirm-form";
 import { Field, FormMessage, SubmitButton } from "@/components/form";
 import {
   adjustChipsAction,
+  clearChipStatsAction,
   closeTableAdminAction,
   renameAction,
   setAdminAction,
@@ -35,6 +36,18 @@ export function AdjustChipsForm({ playerId }: { playerId: string }) {
         <SubmitButton pendingText="Saving…">Apply</SubmitButton>
       </div>
     </form>
+  );
+}
+
+export function ClearChipStatsForm({ playerId, username }: { playerId?: string; username?: string }) {
+  return (
+    <ConfirmForm
+      action={clearChipStatsAction}
+      fields={playerId ? { playerId } : {}}
+      label={playerId ? "Clear their admin chip stats" : "Clear admin chip stats for everyone"}
+      question={`Stop past admin chip changes counting on the Leaders page${username ? ` for ${username}` : " for everyone"}? Balances and the chip history stay as they are, and this goes in the admin log. New changes count from now on.`}
+      danger
+    />
   );
 }
 
@@ -106,7 +119,7 @@ export function CloseTableForm({ tableId, name }: { tableId: string; name: strin
       action={closeTableAdminAction}
       fields={{ tableId }}
       label="Close"
-      question={`Close “${name}”? Everyone is unseated and poker players get their chips back.`}
+      question={`Close “${name}”? Everyone is unseated. Poker players get their chips back, and a poker hand in progress is called off. Other games finish the hand in play first.`}
       danger
     />
   );

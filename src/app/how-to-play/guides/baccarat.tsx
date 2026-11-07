@@ -19,9 +19,13 @@ export function BaccaratGuide() {
       <Section id="round" title="How a hand goes">
         <Steps>
           <li>Place your bets, then press Deal.</li>
-          <li>Four cards come out of the shoe: Player, Banker, Player, Banker. The Player hand turns over, then the Banker hand.</li>
           <li>
-            If neither hand has a natural, the Player draws a third card on 0–5 and stands on 6–7.
+            Four cards come out of the shoe face down: Player, Banker, Player, Banker. One player who bet is picked at
+            random to turn them over, in any order they like.
+          </li>
+          <li>
+            If neither hand has a natural, the Player draws a third card on 0–5 and stands on 6–7. Third cards also come
+            out face down, for the same player to turn over.
           </li>
           <li>
             The Banker then draws or stands by the table below (if the Player stood, the Banker draws on 0–5).
@@ -102,9 +106,22 @@ export function BaccaratGuide() {
             With others at the table, everyone bets on the same hand. The first bet starts a 15-second countdown; the
             cards come out when everyone who bet has pressed Deal, or when time runs out.
           </li>
-          <li>Leaving the table gives back any bets that haven&apos;t been dealt.</li>
+          <li>
+            If it&apos;s your flip, click any face-down card, or press <strong>Flip all</strong>. Alone, take as long as you
+            like. With others, cards turn over by themselves after 15 seconds.
+          </li>
+          <li>The cards are already set when they come out of the shoe: who flips and in what order can&apos;t change the hand.</li>
+          <li>
+            Leaving the table gives back any bets that haven&apos;t been dealt. Bets on a hand already out stay in play and
+            are paid as usual.
+          </li>
         </Bullets>
-        <Keys keys={[["D", "Deal (or say you're ready)"]]} />
+        <Keys
+          keys={[
+            ["D", "Deal (or say you're ready)"],
+            ["F", "Flip all (when it's your flip)"],
+          ]}
+        />
       </Section>
 
       <Section id="tips" title="Beginner tips">

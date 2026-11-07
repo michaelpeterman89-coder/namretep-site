@@ -453,6 +453,65 @@ input:focus-visible,
   background: rgb(6 4 26 / 0.25);
 }
 
+/* Baccarat: a face-down card you can turn over, and the moment it turns. */
+.flip-target {
+  border-radius: 0.5rem;
+  transition: transform 150ms;
+}
+
+.flip-target:enabled {
+  cursor: pointer;
+  animation: flip-target-pulse 1.2s ease-in-out infinite;
+}
+
+.flip-target:enabled:hover,
+.flip-target:enabled:focus-visible {
+  transform: translateY(-6px) rotate(-2deg);
+}
+
+@keyframes flip-target-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgb(255 207 62 / 0.45);
+  }
+  50% {
+    box-shadow: 0 0 16px 4px rgb(255 207 62 / 0.9);
+  }
+}
+
+.card-turning {
+  z-index: 1;
+  transform: translateY(-8px) scale(1.12);
+  filter: drop-shadow(0 0 14px rgb(255 207 62 / 0.85));
+  transition: transform 300ms, filter 300ms;
+}
+
+/* The felt tightens while a card is turning. */
+.felt-tense {
+  animation: felt-tense 1s ease-in-out infinite;
+}
+
+@keyframes felt-tense {
+  0%, 100% {
+    box-shadow: inset 0 0 0 rgb(255 62 165 / 0);
+  }
+  50% {
+    box-shadow: inset 0 0 60px rgb(255 62 165 / 0.3);
+  }
+}
+
+.hand-won {
+  animation: hand-won 700ms ease-out 2;
+}
+
+@keyframes hand-won {
+  0%, 100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.04);
+  }
+}
+
 /* ---------- Chips (see components/chip.tsx) ---------- */
 
 .chip {

@@ -6,10 +6,10 @@ import { LocalTime } from "@/components/local-time";
 import { signed, Tile } from "@/components/stat-tile";
 import { requireAdmin } from "@/lib/auth";
 import { formatChips } from "@/lib/chips";
-import { getPlayerDetail } from "@/server/admin";
+import { adminChipsCounted, getPlayerDetail } from "@/server/admin";
 import { isId } from "@/server/tables";
 import { AdminLogList } from "../../admin-log-list";
-import { AdjustChipsForm, AdminRoleForm, RenameForm, SuspendForm } from "../../admin-forms";
+import { AdjustChipsForm, AdminRoleForm, ClearChipStatsForm, RenameForm, SuspendForm } from "../../admin-forms";
 import { Badge } from "../../badge";
 import { gameName, LEDGER_REASONS } from "../../labels";
 import { tablePath } from "@/lib/games/catalog";
@@ -40,6 +40,7 @@ async function PlayerContent({ params }: { params: Promise<{ playerId: string }>
   const p = await getPlayerDetail(playerId);
   if (!p) notFound();
   const isMe = p.id === admin.id;
+  const adminChips = await adminChipsCounted(p.id);
 
   return (
     <>
@@ -75,6 +76,12 @@ async function PlayerContent({ params }: { params: Promise<{ playerId: string }>
       <div className="grid gap-6 md:grid-cols-2">
         <Panel title="Give or take chips" id="chips-heading">
           <AdjustChipsForm playerId={p.id} />
+          <div className="flex flex-col gap-3 border-t-2 border-space-700 pt-4">
+            <p className="text-sm text-starlight/80">
+              Counted on Leaders: {formatChips(adminChips.given)} given, {formatChips(adminChips.taken)} taken.
+            </p>
+            <ClearChipStatsForm playerId={p.id} username={p.username} />
+          </div>
         </Panel>
         <Panel title="Account" id="account-heading">
           <RenameForm playerId={p.id} username={p.username} />

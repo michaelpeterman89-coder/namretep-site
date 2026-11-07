@@ -19,8 +19,10 @@ import type { BaccaratRules } from "./rules";
 
 /** With other players: time to bet after the first bet before the cards come out. */
 export const BETTING_MS = 15_000;
-/** Time for the cards and payouts to show before the next hand can be dealt. */
-export const HAND_PAUSE_MS = 7_000;
+/** With other players: time to flip the cards that are out before they turn over by themselves. */
+export const REVEAL_MS = 15_000;
+/** Time for the result and payouts to show before the next hand can be dealt. */
+export const HAND_PAUSE_MS = 5_000;
 
 export type BaccaratBet = { playerId: string; kind: BaccaratBetKind; amount: number };
 
@@ -35,6 +37,25 @@ export type LastHand = {
   newShoe: boolean;
 };
 
+export type BaccaratSide = "player" | "banker";
+
+/**
+ * A hand being turned over. The cards stay in the shoe (which no browser can
+ * read) until the hand is settled; this holds only what's on the felt, with
+ * null for a card still face down.
+ */
+export type Reveal = {
+  n: number;
+  /** The player who chooses which cards to turn over. */
+  flipper: string;
+  player: (Card | null)[];
+  banker: (Card | null)[];
+  /** This hand started a fresh shoe. */
+  newShoe: boolean;
+  /** When the cards that are out turn over by themselves (null when playing alone). */
+  deadline: string | null;
+};
+
 export type BaccaratState = {
   bets: BaccaratBet[];
   /** Players who pressed Deal (multiplayer waits for everyone with a bet). */
@@ -44,8 +65,10 @@ export type BaccaratState = {
   /** Results this shoe, for the scoreboards. */
   history: RoadResult[];
   cardsLeft: number;
-  /** When the last hand was dealt (ISO), so the next waits for the payout to show. */
+  /** When the last hand was settled (ISO), so the next waits for the payout to show. */
   dealtAt: string | null;
+  /** The hand being turned over, if there is one. */
+  reveal?: Reveal | null;
 };
 
 export function newBaccaratState(cardsLeft: number): BaccaratState {
@@ -71,6 +94,7 @@ export function addBet(
   kind: BaccaratBetKind,
   amount: number,
 ): BaccaratState {
+  if (state.reveal) throw new IllegalBaccaratBet("The cards are out. Bet on the next hand.");
   const notOffered = betNotOffered(rules, kind);
   if (notOffered) throw new IllegalBaccaratBet(notOffered);
   if (!Number.isSafeInteger(amount) || amount < 1) throw new IllegalBaccaratBet("Bets must be at least 1 chip.");
@@ -125,6 +149,95 @@ export const allReady = (state: BaccaratState) => {
   return who.length > 0 && who.every((id) => state.ready.includes(id));
 };
 
+/** The hand the shoe will deal next, and how many cards it uses. Hands are fixed once the shoe is shuffled. */
+function handFrom(shoe: Card[]) {
+  let used = 0;
+  const hand = dealHand(() => shoe[used++]);
+  return { hand, used };
+}
+
+/**
+ * Starts a hand: four cards go out face down and `flipper` chooses how they
+ * turn over. A shoe below the cut card is replaced by `freshShoe()` first (and
+ * the scoreboard starts over). Returns the shoe to keep.
+ */
+export function startReveal(
+  state: BaccaratState,
+  shoe: Card[],
+  freshShoe: () => Card[],
+  flipper: string,
+  deadline: string | null,
+): { state: BaccaratState; shoe: Card[] } {
+  const newShoe = shoe.length < CUT_CARD;
+  const cards = newShoe ? freshShoe() : shoe;
+  return {
+    state: {
+      ...state,
+      ready: [],
+      history: newShoe ? [] : state.history,
+      cardsLeft: cards.length - 4,
+      reveal: {
+        n: state.handNumber + 1,
+        flipper,
+        player: [null, null],
+        banker: [null, null],
+        newShoe,
+        deadline,
+      },
+    },
+    shoe: cards,
+  };
+}
+
+export type FlipTarget = { side: BaccaratSide; index: number } | "all";
+
+/**
+ * Turns over one face-down card, or all of them. Once everything that's out is
+ * face up, the next third card comes out face down (Player's first) with a
+ * fresh `deadline`. A card that's already up, or isn't out, changes nothing.
+ */
+export function flipCards(state: BaccaratState, shoe: Card[], target: FlipTarget, deadline: string | null): BaccaratState {
+  const reveal = state.reveal;
+  if (!reveal) return state;
+  const { hand } = handFrom(shoe);
+  const player = [...reveal.player];
+  const banker = [...reveal.banker];
+  const turn = (side: BaccaratSide, index: number) => {
+    const out = side === "player" ? player : banker;
+    if (index in out && out[index] === null) out[index] = (side === "player" ? hand.player : hand.banker)[index];
+  };
+  if (target === "all") {
+    player.forEach((_, i) => turn("player", i));
+    banker.forEach((_, i) => turn("banker", i));
+  } else {
+    turn(target.side, target.index);
+  }
+
+  let cardsLeft = state.cardsLeft;
+  let nextDeadline = reveal.deadline;
+  if (![...player, ...banker].includes(null)) {
+    const nextSide = player.length < hand.player.length ? player : banker.length < hand.banker.length ? banker : null;
+    if (nextSide) {
+      nextSide.push(null);
+      cardsLeft -= 1;
+      nextDeadline = deadline;
+    }
+  }
+  return { ...state, cardsLeft, reveal: { ...reveal, player, banker, deadline: nextDeadline } };
+}
+
+/** Every card of the hand has been turned over. */
+export function revealDone(state: BaccaratState, shoe: Card[]): boolean {
+  const reveal = state.reveal;
+  if (!reveal) return false;
+  const { hand } = handFrom(shoe);
+  return (
+    reveal.player.length === hand.player.length &&
+    reveal.banker.length === hand.banker.length &&
+    ![...reveal.player, ...reveal.banker].includes(null)
+  );
+}
+
 export type DealOutcome = {
   state: BaccaratState;
   /** Cards left in the shoe after this hand. */
@@ -135,21 +248,11 @@ export type DealOutcome = {
   results: BetResult[];
 };
 
-/**
- * Deals a hand from the shoe and settles every bet. A shoe below the cut card
- * is replaced by `freshShoe()` first (and the scoreboard starts over).
- */
-export function dealAndSettle(
-  state: BaccaratState,
-  rules: BaccaratRules,
-  shoe: Card[],
-  freshShoe: () => Card[],
-  now: Date,
-): DealOutcome {
-  const newShoe = shoe.length < CUT_CARD;
-  const cards = newShoe ? freshShoe() : [...shoe];
-  let i = 0;
-  const hand = dealHand(() => cards[i++]);
+/** Takes the hand being turned over out of the shoe, whatever's still face down, and settles every bet. */
+export function settleHand(state: BaccaratState, rules: BaccaratRules, shoe: Card[], now: Date): DealOutcome {
+  const reveal = state.reveal;
+  if (!reveal) throw new IllegalBaccaratBet("There's no hand to settle.");
+  const { hand, used } = handFrom(shoe);
 
   const results: BetResult[] = state.bets.map((b) => ({ ...b, ...settleBet(rules, b.kind, b.amount, hand) }));
   const credits = new Map<string, number>();
@@ -162,18 +265,18 @@ export function dealAndSettle(
     natural: hand.natural,
     total: hand.winner === "banker" ? hand.bankerTotal : hand.playerTotal,
   };
-  const handNumber = state.handNumber + 1;
   return {
     state: {
       bets: [],
       ready: [],
-      handNumber,
-      lastHand: { n: handNumber, hand, results, newShoe },
-      history: [...(newShoe ? [] : state.history), road],
-      cardsLeft: cards.length - i,
+      handNumber: reveal.n,
+      lastHand: { n: reveal.n, hand, results, newShoe: reveal.newShoe },
+      history: [...state.history, road],
+      cardsLeft: shoe.length - used,
       dealtAt: now.toISOString(),
+      reveal: null,
     },
-    shoe: cards.slice(i),
+    shoe: shoe.slice(used),
     hand,
     credits,
     results,

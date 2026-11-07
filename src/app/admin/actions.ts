@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { getCurrentPlayer, type Player } from "@/lib/auth";
 import { formatChips } from "@/lib/chips";
 import { validateUsername } from "@/lib/validation";
-import { adjustChips, adminCloseTable, renamePlayer, setAdmin, setSuspended } from "@/server/admin";
+import { adjustChips, adminCloseTable, clearChipStats, renamePlayer, setAdmin, setSuspended } from "@/server/admin";
 import { GameError, isId } from "@/server/tables";
 
 // Server actions are public endpoints: check the caller is an admin every
@@ -80,5 +80,13 @@ export async function closeTableAdminAction(_prev: AdminFormState, formData: For
     if (!isId(tableId)) throw new GameError("That table doesn't exist.");
     await adminCloseTable(admin.id, tableId);
     return "Table closed.";
+  });
+}
+
+/** With no player chosen, clears the stats for everyone. */
+export async function clearChipStatsAction(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  return asAdmin(async (admin) => {
+    const count = await clearChipStats(admin.id, formData.has("playerId") ? playerIdFrom(formData) : null);
+    return count === 0 ? "There was nothing to clear." : `Cleared ${formatChips(count)} admin chip change${count === 1 ? "" : "s"} from the stats.`;
   });
 }

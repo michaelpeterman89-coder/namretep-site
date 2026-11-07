@@ -7,11 +7,8 @@ import { GuideLink } from "@/components/guide-link";
 import {
   DealContext,
   DealtCard,
-  EMPTY_PLAN,
   prefersReducedMotion,
   Shoe,
-  type DealPlan,
-  type PlanEntry,
 } from "@/components/card-table/dealing";
 import { Chip, ChipStack, DENOMINATIONS } from "@/components/chip";
 import { cardLabel } from "@/components/playing-card";
@@ -30,20 +27,21 @@ import {
   type BaccaratBetKind,
   type RoadResult,
 } from "@/lib/games/baccarat";
-import { playSound, playSoundAt } from "@/lib/sound";
+import { playSound } from "@/lib/sound";
 import { createClient } from "@/lib/supabase/client";
 import type { BaccaratView } from "@/server/baccarat";
 import {
   baccaratBetAction,
   baccaratClearAction,
   baccaratDealAction,
+  baccaratFlipAction,
   baccaratLeaveAction,
   baccaratRebetAction,
   baccaratSitAction,
   closeBaccaratTableAction,
   type BaccaratResult,
 } from "../actions";
-import { baccaratTimeline, bankerSlot, playerSlot, type Timeline } from "./baccarat-dealing";
+import { advanceTracker, bankerSlot, feltOf, playerSlot, startTracker, type Tracker } from "./baccarat-dealing";
 
 async function loadTable(tableId: string, method: "GET" | "POST"): Promise<BaccaratView | null> {
   try {
@@ -163,14 +161,13 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
   const [view, setView] = useState(initialView);
   const [offset, setOffset] = useState(() => new Date(initialView.serverNow).getTime() - Date.now());
   const [now, setNow] = useState(() => Date.now());
-  const [dealing, setDealing] = useState<{ n: number; startedAt: number; timeline: Timeline; plan: DealPlan } | null>(null);
+  const [tracker, setTracker] = useState<Tracker>(() => startTracker(feltOf(initialView.game.state)));
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [chip, setChip] = useState(() => Math.max(initialView.table.minBet, 1));
   const [confirmClose, setConfirmClose] = useState(false);
   const [copied, setCopied] = useState(false);
   const latestAt = useRef(initialView.serverNow);
-  const shownHand = useRef(initialView.game.state.lastHand?.n ?? 0);
   const shoeRef = useRef<HTMLDivElement>(null);
   const discardRef = useRef<HTMLDivElement>(null);
   const trayRef = useRef<HTMLDivElement>(null);
@@ -179,20 +176,12 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
   const accept = useCallback((next: BaccaratView | null) => {
     if (!next || next.serverNow < latestAt.current) return;
     latestAt.current = next.serverNow;
-    setOffset(new Date(next.serverNow).getTime() - Date.now());
-    const last = next.game.state.lastHand;
-    if (last && last.n > shownHand.current) {
-      shownHand.current = last.n;
-      if (!prefersReducedMotion()) {
-        const timeline = baccaratTimeline(last.hand);
-        const entries = new Map<string, PlanEntry>();
-        // The first four fly out as soon as the hand arrives; third cards fly when they appear.
-        for (const [slot, at] of timeline.dealAt) entries.set(slot, { delay: at < timeline.revealPlayerAt ? at : 0, kind: "deal" });
-        playSoundAt("flip", timeline.revealPlayerAt);
-        playSoundAt("flip", timeline.revealBankerAt);
-        setDealing({ n: last.n, startedAt: Date.now(), timeline, plan: { entries, durationMs: timeline.doneAt } });
-      }
-    }
+    const receivedAt = Date.now();
+    setOffset(new Date(next.serverNow).getTime() - receivedAt);
+    const felt = feltOf(next.game.state);
+    const settled = !next.game.state.reveal;
+    const reduced = prefersReducedMotion();
+    setTracker((prev) => advanceTracker(prev, felt, settled, receivedAt, reduced));
     setView(next);
   }, []);
 
@@ -248,10 +237,11 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
   const { table, seats, game, me } = view;
   const state = game.state;
   const last = state.lastHand;
-  const elapsed = dealing ? now - dealing.startedAt : Infinity;
-  const tl = dealing?.timeline;
-  const dealingNow = Boolean(dealing && tl && elapsed < tl.doneAt);
-  const showingResult = !dealingNow && Boolean(last) && (!dealing || elapsed < (tl?.doneAt ?? 0) + RESULT_HOLD_MS);
+  const reveal = state.reveal ?? null;
+  // The hand is settled on the server, but its last card is still turning here.
+  const holding = !reveal && tracker.resultAt !== null && now < tracker.resultAt;
+  const dealingNow = Boolean(reveal) || holding;
+  const showingResult = !dealingNow && Boolean(last) && (tracker.resultAt === null || now < tracker.resultAt + RESULT_HOLD_MS);
   const serverNow = now + offset;
   const dealAt = game.dealAt ? new Date(game.dealAt).getTime() : null;
   const secondsToDeal = dealAt ? Math.max(0, Math.ceil((dealAt - serverNow) / 1000)) : null;
@@ -263,13 +253,17 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
     return () => clearInterval(timer);
   }, [dealingNow]);
 
-  // The countdown ran out: ask the server to deal.
+  // A countdown ran out: ask the server to deal or turn the cards over. A hand
+  // with no clock and others at the table needs one started.
+  const revealAt = reveal?.deadline ? new Date(reveal.deadline).getTime() : reveal && seats.length > 1 ? 0 : null;
+  const tickAt = reveal ? revealAt : dealAt;
   const lastTick = useRef(0);
   useEffect(() => {
-    if (!dealAt || serverNow < dealAt || Date.now() - lastTick.current < 3000) return;
+    if (tickAt === null || serverNow < tickAt || Date.now() - lastTick.current < 3000) return;
     lastTick.current = Date.now();
     void loadTable(tableId, "POST").then(accept);
-  }, [dealAt, serverNow, tableId, accept]);
+  }, [tickAt, serverNow, tableId, accept]);
+  const secondsToFlip = revealAt ? Math.max(0, Math.ceil((revealAt - serverNow) / 1000)) : null;
 
   // ---------- Who's who ----------
 
@@ -279,6 +273,8 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
   const myCredit = myLast.reduce((s, r) => s + r.credit, 0);
   const myBets = state.bets.filter((b) => b.playerId === me.playerId);
   const iAmReady = state.ready.includes(me.playerId);
+  const iFlip = reveal?.flipper === me.playerId;
+  const flipperName = !reveal ? "" : iFlip ? "You" : (seats.find((s) => s.playerId === reveal.flipper)?.username ?? "A player");
   const othersSeated = seats.length > 1;
   // Until the cards land, the balance doesn't show this hand's winnings yet.
   const shownChips = dealingNow ? me.chips - myCredit : me.chips;
@@ -290,6 +286,18 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
     announced.current = last.n;
     if (myLast.length > 0) playSound(myNet > 0 ? "win" : myNet < 0 ? "lose" : "push");
   }, [last, dealingNow, myLast.length, myNet]);
+
+  // Your turn to flip, and a heartbeat when a third card turns.
+  const wasFlipping = useRef(false);
+  useEffect(() => {
+    if (iFlip && !wasFlipping.current) playSound("turn");
+    wasFlipping.current = iFlip;
+  }, [iFlip]);
+  const thirdFlips = useRef(tracker.thirdFlips);
+  useEffect(() => {
+    if (tracker.thirdFlips > thirdFlips.current) playSound("suspense");
+    thirdFlips.current = tracker.thirdFlips;
+  }, [tracker.thirdFlips]);
 
   useEffect(() => {
     if (!dealingNow && me.chips !== headerChips.current) {
@@ -322,6 +330,10 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
     if (canDeal) apply(baccaratDealAction(tableId));
   }
 
+  function flipAll() {
+    if (iFlip) apply(baccaratFlipAction(tableId, null, null));
+  }
+
   async function copyInvite() {
     if (!table.inviteCode) return;
     try {
@@ -341,6 +353,10 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
       if ((e.key === "d" || e.key === "D") && canDeal) {
         e.preventDefault();
         deal();
+      }
+      if ((e.key === "f" || e.key === "F") && iFlip) {
+        e.preventDefault();
+        flipAll();
       }
     }
     window.addEventListener("keydown", onKey);
@@ -377,7 +393,7 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
 
   /** Chips on a spot: while a hand is out, the bets that were in it; otherwise the bets for the next hand. */
   function onSpot(kind: BaccaratBetKind) {
-    const source = dealingNow && last ? last.results : state.bets;
+    const source = holding && last ? last.results : state.bets;
     let mine = 0;
     let others = 0;
     for (const b of source) {
@@ -392,42 +408,53 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
   // ---------- The cards ----------
 
   const hand = last?.hand ?? null;
-  const reveal = (who: "player" | "banker", i: number) => {
-    if (!hand) return null;
-    const card = (who === "player" ? hand.player : hand.banker)[i];
-    if (!dealingNow || !tl) return card;
-    if (i === 2) return card; // third cards come out face up
-    return elapsed >= (who === "player" ? tl.revealPlayerAt : tl.revealBankerAt) ? card : null;
+  const felt = feltOf(state);
+  const slotOf = (who: "player" | "banker", i: number) => (who === "player" ? playerSlot(i) : bankerSlot(i));
+  /** Finished turning over, so it can count toward the total. */
+  const readable = (who: "player" | "banker", i: number) => {
+    const at = tracker.readableAt.get(slotOf(who, i));
+    return at !== undefined && now >= at;
   };
-  const visible = (who: "player" | "banker", i: number) => {
-    if (!hand) return false;
-    const cards = who === "player" ? hand.player : hand.banker;
-    if (i >= cards.length) return false;
-    if (!dealingNow || !tl) return true;
-    return elapsed >= (tl.dealAt.get(who === "player" ? playerSlot(i) : bankerSlot(i)) ?? 0) || i < 2;
+  const turning = (who: "player" | "banker", i: number) => {
+    const at = tracker.readableAt.get(slotOf(who, i));
+    return at !== undefined && now < at;
   };
   const totalShown = (who: "player" | "banker") => {
-    if (!hand) return null;
-    const cards = (who === "player" ? hand.player : hand.banker).filter((_, i) => visible(who, i) && reveal(who, i));
-    return cards.length >= 2 ? handTotal(cards) : null;
+    if (!felt) return null;
+    const cards = felt[who].flatMap((card, i) => (card && readable(who, i) ? [card] : []));
+    return cards.length > 0 ? handTotal(cards) : null;
   };
+  const anyTurning = felt ? (["player", "banker"] as const).some((who) => felt[who].some((_, i) => turning(who, i))) : false;
 
-  // While the cards are out, nothing else may give the result away: the shoe
-  // still counts cards not yet dealt (how many come out decides Big / Small), and
-  // the scoreboards wait for this hand's result.
-  const undealt = hand
-    ? ([0, 1, 2].filter((i) => i < hand.player.length && !visible("player", i)).length +
-      [0, 1, 2].filter((i) => i < hand.banker.length && !visible("banker", i)).length)
-    : 0;
-  const shownHistory = dealingNow ? state.history.slice(0, -1) : state.history;
+  // The scoreboards wait for this hand's result too.
+  const shownHistory = holding ? state.history.slice(0, -1) : state.history;
 
-  const srSummary = !hand
-    ? "Place your bets."
-    : dealingNow
-      ? "Dealing."
-      : `${describeHand(hand)}. Player: ${hand.player.map(cardLabel).join(", ")}. Banker: ${hand.banker.map(cardLabel).join(", ")}.${
-          myLast.length ? (myNet > 0 ? ` You won ${formatChips(myNet)}.` : myNet < 0 ? ` You lost ${formatChips(-myNet)}.` : " Your bets pushed.") : ""
-        }`;
+  const drawing = reveal && (reveal.player[2] === null ? "Player" : reveal.banker[2] === null ? "Banker" : null);
+  const srSummary = reveal
+    ? `${iFlip ? "Your turn to flip" : `${flipperName} is flipping`}. ${
+        (["player", "banker"] as const)
+          .map((who) => `${who === "player" ? "Player" : "Banker"}: ${reveal[who].map((c) => (c ? cardLabel(c) : "face down")).join(", ")}`)
+          .join(". ")
+      }.`
+    : !hand
+      ? "Place your bets."
+      : holding
+        ? "Turning over the last card."
+        : `${describeHand(hand)}. Player: ${hand.player.map(cardLabel).join(", ")}. Banker: ${hand.banker.map(cardLabel).join(", ")}.${
+            myLast.length ? (myNet > 0 ? ` You won ${formatChips(myNet)}.` : myNet < 0 ? ` You lost ${formatChips(-myNet)}.` : " Your bets pushed.") : ""
+          }`;
+
+  const headline = reveal
+    ? drawing && !anyTurning
+      ? `${drawing} draws a third card`
+      : iFlip
+        ? "Your flip: pick a card"
+        : `${flipperName} is flipping…`
+    : !hand
+      ? "Place your bets"
+      : holding
+        ? "…"
+        : describeHand(hand);
 
   // Chips you can afford that fit the limits. With no maximum, keep the biggest so large bets are quick to make.
   const usableChips = DENOMINATIONS.filter((d) => d.value <= (table.maxBet ?? Infinity) && d.value <= Math.max(me.chips, table.minBet));
@@ -450,25 +477,30 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
     const c = COLORS[who];
     const total = totalShown(who);
     const winner = hand && !dealingNow && hand.winner === who;
+    const cards = felt?.[who] ?? [];
     return (
       <div
-        className={`flex flex-1 flex-col items-center gap-2 rounded-lg border-2 p-3 ${c.border} ${winner ? "bg-white/10 shadow-[0_0_18px_currentColor]" : ""} ${c.text}`}
+        className={`flex flex-1 flex-col items-center gap-2 rounded-lg border-2 p-3 ${c.border} ${
+          winner ? "hand-won bg-white/10 shadow-[0_0_18px_currentColor]" : ""
+        } ${c.text}`}
       >
         <p className="flex items-center gap-2 font-display text-xs">
           {who === "player" ? "Player" : "Banker"}
           {total !== null && <span className="rounded bg-ink/60 px-1.5 py-0.5 text-starlight">{total}</span>}
         </p>
         <div className="flex min-h-20 gap-1.5 sm:min-h-28">
-          {hand &&
-            [0, 1, 2].map((i) =>
-              visible(who, i) ? (
-                <DealtCard
-                  key={`${last!.n}-${who}-${i}`}
-                  slot={who === "player" ? playerSlot(i) : bankerSlot(i)}
-                  card={reveal(who, i)}
-                />
-              ) : null,
-            )}
+          {cards.map((card, i) => (
+            <button
+              key={`${felt!.n}-${who}-${i}`}
+              type="button"
+              disabled={!iFlip || card !== null}
+              onClick={() => apply(baccaratFlipAction(tableId, who, i))}
+              aria-label={card ? `${who} card ${i + 1}` : `Flip ${who} card ${i + 1}`}
+              className={`flip-target ${turning(who, i) ? "card-turning" : ""}`}
+            >
+              <DealtCard slot={slotOf(who, i)} card={card} />
+            </button>
+          ))}
         </div>
       </div>
     );
@@ -501,11 +533,15 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
       </p>
 
       {/* The cards */}
-      <DealContext value={{ shoeRef, discardRef, trayRef, plan: dealing?.plan ?? EMPTY_PLAN, settlement: null }}>
-        <section aria-label="Baccarat table" className="craps-felt relative flex flex-col gap-3 p-4 pt-14 sm:p-6 sm:pt-6">
-          <Shoe cardsLeft={state.cardsLeft + undealt} className="top-3 right-3 sm:top-5 sm:right-5" />
+      <DealContext value={{ shoeRef, discardRef, trayRef, plan: { entries: tracker.entries, durationMs: 0 }, settlement: null }}>
+        <section
+          aria-label="Baccarat table"
+          className={`craps-felt relative flex flex-col gap-3 p-4 pt-14 sm:p-6 sm:pt-6 ${anyTurning ? "felt-tense" : ""}`}
+        >
+          <Shoe cardsLeft={state.cardsLeft} className="top-3 right-3 sm:top-5 sm:right-5" />
           <p className="text-center font-display text-xs text-neon-gold sm:text-sm" aria-hidden>
-            {!hand ? "Place your bets" : dealingNow ? "Dealing…" : describeHand(hand)}
+            {headline}
+            {secondsToFlip !== null && <span className="ml-2 text-starlight/70">{secondsToFlip}s</span>}
             {last?.newShoe && !dealingNow && <span className="ml-2 text-starlight/60">· new shoe</span>}
           </p>
           {showingResult && myLast.length > 0 && (
@@ -517,6 +553,16 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
             {handBox("player")}
             {handBox("banker")}
           </div>
+          {iFlip && (
+            <div className="flex justify-center">
+              <button type="button" onClick={flipAll} className="pixel-btn bg-neon-gold text-ink">
+                Flip all
+                <kbd className="kbd" aria-hidden>
+                  F
+                </kbd>
+              </button>
+            </div>
+          )}
         </section>
       </DealContext>
 
@@ -623,7 +669,7 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
           {seated && (
             <button type="button" onClick={deal} disabled={!canDeal} className="pixel-btn bg-neon-lime text-ink disabled:opacity-60">
               {dealingNow
-                ? "Dealing…"
+                ? "Cards are out"
                 : iAmReady
                   ? "Waiting for others"
                   : secondsToNext > 0
@@ -707,7 +753,7 @@ export function BaccaratTableView({ initialView }: { initialView: BaccaratView }
                   }
                   className="pixel-btn bg-neon-magenta text-ink"
                 >
-                  Yes, close it (all bets are returned)
+                  Yes, close it (bets not yet dealt are returned)
                 </button>
                 <button type="button" onClick={() => setConfirmClose(false)} className="pixel-btn bg-space-800 text-starlight">
                   Cancel

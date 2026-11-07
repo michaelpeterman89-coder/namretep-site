@@ -17,7 +17,8 @@ export const DEAL_GAP_MS = 450;
 export const DEAL_FLIGHT_MS = 550;
 export const FLIP_MS = 650;
 
-export type PlanEntry = { delay: number; kind: "deal" | "flip" };
+/** `flipMs` makes a flip slower than usual, starting slowly for suspense. */
+export type PlanEntry = { delay: number; kind: "deal" | "flip"; flipMs?: number };
 export type DealPlan = { entries: Map<string, PlanEntry>; durationMs: number };
 export const EMPTY_PLAN: DealPlan = { entries: new Map(), durationMs: 0 };
 
@@ -220,7 +221,11 @@ export function DealtCard({ slot, card, size = "md" }: { slot: string; card: Car
     <div ref={ref} className={`flip-card ${CARD_DIMENSIONS[size]}`}>
       <div
         className="flip-inner"
-        style={{ transform: card ? "rotateY(0deg)" : "rotateY(180deg)", transitionDelay: `${flipDelay}ms` }}
+        style={{
+          transform: card ? "rotateY(0deg)" : "rotateY(180deg)",
+          transitionDelay: `${flipDelay}ms`,
+          ...(entry?.flipMs ? { transitionDuration: `${entry.flipMs}ms`, transitionTimingFunction: "cubic-bezier(0.8, 0, 0.2, 1)" } : {}),
+        }}
       >
         <div className="flip-face" aria-hidden={!card}>
           {card && <PlayingCard card={card} size={size} animate={false} />}

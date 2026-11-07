@@ -15,6 +15,7 @@ import {
   pokerHandStats,
   pokerSummary,
   publicHand,
+  showCards,
   startHand,
   type ActionOptions,
   type PokerActionType,
@@ -188,11 +189,6 @@ export async function buyIn(table: PokerTable, playerId: string, seatNumber: num
   await startHandIfReady(table.id);
 }
 
-/** True while a hand is being played at the table. */
-export async function isHandInProgress(tableId: string): Promise<boolean> {
-  return (await getLatestHand(tableId))?.state.hand.phase === "betting";
-}
-
 /**
  * Leaves the table. Between hands you're cashed out now; mid-hand you're
  * folded when it's your turn and cashed out when the hand ends.
@@ -330,6 +326,61 @@ export async function takePokerAction(
   } catch (e) {
     throw e instanceof GameError ? e : friendlyDbError(e as { message: string });
   }
+}
+
+/** After a hand, a player shows their cards to the table, win or lose. */
+export async function showPokerHand(table: PokerTable, playerId: string, handId: string) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const stored = await getLatestHand(table.id);
+    if (!stored || stored.id !== handId) throw new GameError("That hand is over. Refreshing…");
+    const seat = stored.state.hand.seats.findIndex((s) => s.playerId === playerId);
+    if (seat < 0) throw new GameError("You're not in this hand.");
+    let hand: PokerHand;
+    try {
+      hand = showCards(stored.state.hand, seat);
+    } catch (e) {
+      if (e instanceof IllegalPokerAction) throw new GameError(e.message);
+      throw e;
+    }
+    if (hand === stored.state.hand) return;
+    const state: StoredState = { ...stored.state, hand };
+    const { error } = await createAdminClient().rpc("poker_show_hand", {
+      p_hand_id: stored.id,
+      p_version: stored.version,
+      p_public: publicState(state),
+      p_secret: state,
+    });
+    if (!error) return;
+    if (!error.message.includes("STALE_HAND")) throw friendlyDbError(error);
+  }
+  throw new GameError("The table is busy. Please try again.");
+}
+
+/**
+ * Calls off a hand in progress, for an admin closing the table. Stacks only
+ * change when a hand ends, so everyone keeps what they had before it started.
+ */
+export async function callOffHand(table: PokerTable) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const stored = await getLatestHand(table.id);
+    if (!stored || stored.state.hand.phase === "complete") return;
+    const state: StoredState = { ...stored.state, hand: { ...stored.state.hand, phase: "complete", toAct: null } };
+    const { error } = await createAdminClient().rpc("poker_apply", {
+      p_hand_id: stored.id,
+      p_version: stored.version,
+      p_phase: "complete",
+      p_public: publicState(state),
+      p_secret: state,
+      p_deadline: orNull(null),
+      p_stacks: [],
+      p_stats: [],
+      p_actor: orNull(null),
+      p_timed_out: [],
+    });
+    if (!error) return;
+    if (!error.message.includes("STALE_HAND")) throw friendlyDbError(error);
+  }
+  throw new GameError("The table is busy. Please try again.");
 }
 
 /**

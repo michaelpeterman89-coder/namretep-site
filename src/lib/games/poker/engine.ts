@@ -411,6 +411,16 @@ function showdown(hand: PokerHand) {
   hand.toAct = null;
 }
 
+// ---------- Showing cards after the hand ----------
+
+/** Once a hand is over, any player dealt in may show their cards, win or lose. */
+export function showCards(hand: PokerHand, seat: number): PokerHand {
+  if (hand.phase !== "complete" || !hand.result) throw new IllegalPokerAction("You can show your cards once the hand is over.");
+  if (!hand.seats[seat] || hand.seats[seat].hole.length === 0) throw new IllegalPokerAction("You weren't dealt into this hand.");
+  if (hand.result.shown.includes(seat)) return hand;
+  return { ...hand, result: { ...hand.result, shown: [...hand.result.shown, seat] } };
+}
+
 // ---------- What players may see ----------
 
 export type PublicSeat = Omit<PokerSeat, "hole"> & { hole: Card[]; holeCount: number };

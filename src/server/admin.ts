@@ -3,8 +3,8 @@ import type { User } from "@supabase/supabase-js";
 import type { AvatarId } from "@/lib/avatars";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
-import { isRoundInProgress } from "./blackjack";
-import { isHandInProgress, leaveTable } from "./poker";
+import { isRoundInProgress, runTimeouts } from "./blackjack";
+import { callOffHand, leaveTable } from "./poker";
 import {
   friendlyDbError,
   GameError,
@@ -303,13 +303,23 @@ export async function listOpenTables(): Promise<AdminTable[]> {
   });
 }
 
-/** Closes any table between hands; poker players get their chips back. */
+/**
+ * Closes any table, even mid-hand or if its players are long gone. A poker hand
+ * is called off (everyone gets back what they had before it), a blackjack round
+ * is finished by standing every hand and paid as usual, and a baccarat hand
+ * that's out is settled.
+ */
 export async function adminCloseTable(adminId: string, tableId: string) {
   const table = await getTable(tableId);
   if (!table) throw new GameError("That table doesn't exist.");
   if (table.status !== "open") throw new GameError("That table is already closed.");
-  const playing = table.game === "holdem" ? await isHandInProgress(table.id) : await isRoundInProgress(table.id);
-  await shutTable(table, playing);
+  if (table.game === "holdem") await callOffHand(table);
+  if (table.game === "blackjack" && (await isRoundInProgress(table.id))) {
+    await createAdminClient().from("table_seats").delete().eq("table_id", table.id);
+    await runTimeouts(table);
+    if (await isRoundInProgress(table.id)) throw new GameError("That round is still finishing. Please try again.");
+  }
+  await shutTable(table, false);
   await touchTable(table.id);
   const { error } = await createAdminClient().rpc("admin_log", {
     p_admin: adminId,
@@ -319,6 +329,37 @@ export async function adminCloseTable(adminId: string, tableId: string) {
     p_details: { name: table.name, game: table.game },
   });
   if (error) throw adminError(error);
+}
+
+// ---------- Clearing the admin chip stats ----------
+
+/** Chips given and taken by admins that still count in the stats, for one player. */
+export async function adminChipsCounted(playerId: string) {
+  const { data, error } = await createAdminClient()
+    .from("chip_ledger")
+    .select("amount")
+    .eq("player_id", playerId)
+    .eq("reason", "admin_adjust")
+    .is("stats_cleared_at", null);
+  if (error) throw adminError(error);
+  const amounts = data.map((l) => Number(l.amount));
+  return {
+    given: amounts.filter((a) => a > 0).reduce((s, a) => s + a, 0),
+    taken: amounts.filter((a) => a < 0).reduce((s, a) => s - a, 0),
+  };
+}
+
+/**
+ * Stops past admin gifts and takings counting in the stats, for one player or
+ * (with null) everyone. Balances and the chip history don't change.
+ */
+export async function clearChipStats(adminId: string, playerId: string | null): Promise<number> {
+  const { data, error } = await createAdminClient().rpc("admin_clear_chip_stats", {
+    p_admin: adminId,
+    p_target: playerId as string,
+  });
+  if (error) throw adminError(error);
+  return data;
 }
 
 // ---------- Audit log ----------

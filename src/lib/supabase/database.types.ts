@@ -327,6 +327,7 @@ export type Database = {
           player_id: string
           reason: string
           round_id: string | null
+          stats_cleared_at: string | null
           table_id: string | null
         }
         Insert: {
@@ -337,6 +338,7 @@ export type Database = {
           player_id: string
           reason: string
           round_id?: string | null
+          stats_cleared_at?: string | null
           table_id?: string | null
         }
         Update: {
@@ -347,6 +349,7 @@ export type Database = {
           player_id?: string
           reason?: string
           round_id?: string | null
+          stats_cleared_at?: string | null
           table_id?: string | null
         }
         Relationships: [
@@ -785,6 +788,10 @@ export type Database = {
         }
         Returns: number
       }
+      admin_clear_chip_stats: {
+        Args: { p_admin: string; p_target: string }
+        Returns: number
+      }
       admin_log: {
         Args: {
           p_action: string
@@ -927,6 +934,15 @@ export type Database = {
       }
       poker_cash_out: {
         Args: { p_player_id: string; p_table_id: string }
+        Returns: number
+      }
+      poker_show_hand: {
+        Args: {
+          p_hand_id: string
+          p_public: Json
+          p_secret: Json
+          p_version: number
+        }
         Returns: number
       }
       poker_start_hand: {

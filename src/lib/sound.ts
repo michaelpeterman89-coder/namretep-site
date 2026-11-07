@@ -6,7 +6,7 @@
 
 export const SOUND_KEY = "namretep:sound";
 
-export type SoundName = "deal" | "flip" | "chip" | "win" | "blackjack" | "lose" | "push" | "turn" | "tick";
+export type SoundName = "deal" | "flip" | "chip" | "win" | "blackjack" | "lose" | "push" | "turn" | "tick" | "suspense";
 
 let context: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -127,6 +127,12 @@ export function playSound(name: SoundName) {
       break;
     case "tick":
       tone(ctx, out, { freq: 1800, start: t, length: 0.03, type: "square", volume: 0.15 });
+      break;
+    case "suspense":
+      // Two slow heartbeats.
+      [0, 0.22, 0.7, 0.92].forEach((at, i) =>
+        tone(ctx, out, { freq: i % 2 ? 62 : 72, start: t + at, length: 0.2, type: "sine", volume: 0.7 }),
+      );
       break;
   }
 }

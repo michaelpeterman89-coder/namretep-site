@@ -39,6 +39,10 @@ export function describeAdminAction(line: AdminLogLine): string {
       return "restored the account";
     case "rename":
       return `renamed ${String(d.from)} to ${String(d.to)}`;
+    case "clear_chip_stats":
+      return `cleared admin chip stats (${formatChips(Number(d.given))} given, ${formatChips(Number(d.taken))} taken)${
+        line.targetId ? "" : " for everyone"
+      }`;
     case "close_table":
       return `closed the ${gameName(String(d.game))} table “${String(d.name)}”`;
     default:

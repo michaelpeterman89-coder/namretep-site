@@ -5,7 +5,8 @@ import {
   baccaratHandStats,
   baccaratSummary,
   BETTING_MS,
-  dealAndSettle,
+  bettors,
+  flipCards,
   HAND_PAUSE_MS,
   IllegalBaccaratBet,
   lastBetsOf,
@@ -13,7 +14,12 @@ import {
   newShoe,
   parseBaccaratRules,
   removeBets,
+  revealDone,
+  REVEAL_MS,
+  settleHand,
+  startReveal,
   type BaccaratBetKind,
+  type FlipTarget,
   type BaccaratState,
   type BaccaratStatLine,
 } from "@/lib/games/baccarat";
@@ -168,9 +174,14 @@ export async function sitAtBaccarat(table: BaccaratTable, playerId: string, seat
   await sitDown(table, playerId, seatNumber);
 }
 
-/** Leaves the table; bets not yet dealt come back. */
+/**
+ * Leaves the table; bets not yet dealt come back. Bets on a hand already out
+ * stay and are paid as usual, and if the player leaving was turning the cards
+ * over, the hand finishes now.
+ */
 export async function leaveBaccarat(table: BaccaratTable, playerId: string) {
-  await mutate(table, (game) => {
+  await mutate(table, async (game, _seats, shoe) => {
+    if (game.state.reveal) return game.state.reveal.flipper === playerId ? settle(table, game, await shoe()) : null;
     const { state, refund } = removeBets(game.state, playerId);
     if (refund === 0 && state.ready.length === game.state.ready.length) return null;
     return {
@@ -184,20 +195,29 @@ export async function leaveBaccarat(table: BaccaratTable, playerId: string) {
   await dealIfReady(table);
 }
 
-/** Gives every bet back (used when a table closes). */
-export async function returnAllBaccaratBets(tableId: string) {
+/**
+ * Used when a table closes: a hand already out is settled, so closing can't
+ * undo a losing hand, and every other bet comes back.
+ */
+export async function returnAllBaccaratBets(table: BaccaratTable) {
   for (let attempt = 0; attempt < 4; attempt++) {
-    const game = await loadGame(tableId);
-    if (game.state.bets.length === 0) return;
+    const game = await loadGame(table.id);
+    if (!game.state.reveal && game.state.bets.length === 0) return;
     const refunds = new Map<string, number>();
     for (const b of game.state.bets) refunds.set(b.playerId, (refunds.get(b.playerId) ?? 0) + b.amount);
-    const { error } = await save(tableId, game, {
-      state: { ...game.state, bets: [], ready: [] },
-      dealAt: null,
-      chips: [...refunds].map(([player_id, amount]) => ({ player_id, amount, reason: "baccarat_refund" })),
-    });
-    if (!error) return;
-    if (!error.message.includes("STALE_ROUND")) throw friendlyDbError(error);
+    const { error } = await save(
+      table.id,
+      game,
+      game.state.reveal
+        ? settle(table, game, await loadShoe(table.id))
+        : {
+            state: { ...game.state, bets: [], ready: [] },
+            dealAt: null,
+            chips: [...refunds].map(([player_id, amount]) => ({ player_id, amount, reason: "baccarat_refund" })),
+          },
+    );
+    if (!error && !game.state.reveal) return;
+    if (error && !error.message.includes("STALE_ROUND")) throw friendlyDbError(error);
   }
   throw new GameError("The table is busy. Please try again.");
 }
@@ -242,6 +262,7 @@ export async function baccaratRebet(table: BaccaratTable, playerId: string) {
 
 export async function baccaratClear(table: BaccaratTable, playerId: string) {
   await mutate(table, (game) => {
+    if (game.state.reveal) throw new GameError("The cards are out. Those bets are in play.");
     const { state, refund } = removeBets(game.state, playerId);
     if (refund === 0) return null;
     return {
@@ -257,8 +278,21 @@ export async function baccaratClear(table: BaccaratTable, playerId: string) {
 /** Can't deal until the last hand's cards and payouts have shown. */
 const pauseOver = (state: BaccaratState) => !state.dealtAt || Date.now() - new Date(state.dealtAt).getTime() >= HAND_PAUSE_MS;
 
-async function deal(table: BaccaratTable, game: Game, shoe: () => Promise<Card[]>): Promise<Change> {
-  const out = dealAndSettle(game.state, table.rules, await shoe(), freshShoe(table), new Date());
+/** With others at the table, the cards that are out turn over by themselves after a while. */
+const revealDeadline = (seats: SeatInfo[]) => (seats.length > 1 ? new Date(Date.now() + REVEAL_MS).toISOString() : null);
+
+/** Four cards go out face down, and one player who bet is picked at random to turn them over. */
+async function deal(table: BaccaratTable, game: Game, seats: SeatInfo[], shoe: () => Promise<Card[]>): Promise<Change> {
+  const bettingHere = bettors(game.state).filter((id) => seatOf(seats, id));
+  const pool = bettingHere.length > 0 ? bettingHere : bettors(game.state);
+  const flipper = pool[secureRandomInt(pool.length)];
+  const out = startReveal(game.state, await shoe(), freshShoe(table), flipper, revealDeadline(seats));
+  return { state: out.state, dealAt: null, shoe: out.shoe };
+}
+
+/** Pays every bet on the hand being turned over and takes its cards out of the shoe. */
+function settle(table: BaccaratTable, game: Game, cards: Card[]): Change {
+  const out = settleHand(game.state, table.rules, cards, new Date());
   return {
     state: out.state,
     dealAt: null,
@@ -269,6 +303,22 @@ async function deal(table: BaccaratTable, game: Game, shoe: () => Promise<Card[]
   };
 }
 
+/** Turns cards over, and settles the hand once the last one is up. */
+function flip(table: BaccaratTable, game: Game, seats: SeatInfo[], cards: Card[], target: FlipTarget): Change {
+  const state = flipCards(game.state, cards, target, revealDeadline(seats));
+  return revealDone(state, cards) ? settle(table, { ...game, state }, cards) : { state };
+}
+
+/** The chosen player turns over a card, or all the cards that are out. */
+export async function baccaratFlip(table: BaccaratTable, playerId: string, target: FlipTarget) {
+  await mutate(table, async (game, seats, shoe) => {
+    const reveal = game.state.reveal;
+    if (!reveal) return null;
+    if (reveal.flipper !== playerId) throw new GameError("Another player is turning the cards over.");
+    return flip(table, game, seats, await shoe(), target);
+  });
+}
+
 /**
  * The player presses Deal. Alone, the cards come out now; with others, the
  * hand deals once everyone with a bet is ready (or the countdown ends).
@@ -277,22 +327,38 @@ export async function baccaratDeal(table: BaccaratTable, playerId: string) {
   if (table.status !== "open") throw new GameError("This table is closed.");
   await mutate(table, async (game, seats, shoe) => {
     requireSeat(seats, playerId);
+    if (game.state.reveal) throw new GameError("The cards are already out.");
     if (!game.state.bets.some((b) => b.playerId === playerId)) throw new GameError("Place a bet first.");
     if (!pauseOver(game.state)) throw new GameError("Wait for the last hand to finish.");
     const state = { ...game.state, ready: [...new Set([...game.state.ready, playerId])] };
     if (seats.length > 1 && !allReady(state)) return { state };
-    return deal(table, { ...game, state }, shoe);
+    return deal(table, { ...game, state }, seats, shoe);
   });
 }
 
-/** Deals when everyone is ready or the countdown has run out (called on a timer and after leaving). */
+/**
+ * Moves the table along (called on a timer and after leaving): cards turn over
+ * when their time is up, and a hand deals when everyone is ready or the
+ * countdown has run out.
+ */
 export async function dealIfReady(table: BaccaratTable) {
   if (table.status !== "open") return;
-  await mutate(table, async (game, _seats, shoe) => {
+  await mutate(table, async (game, seats, shoe) => {
+    const reveal = game.state.reveal;
+    if (reveal) {
+      if (!seatOf(seats, reveal.flipper)) return settle(table, game, await shoe());
+      // Someone sat down at a solo table: start the clock now that others are waiting.
+      if (!reveal.deadline) {
+        const deadline = revealDeadline(seats);
+        return deadline ? { state: { ...game.state, reveal: { ...reveal, deadline } } } : null;
+      }
+      if (Date.now() < new Date(reveal.deadline).getTime()) return null;
+      return flip(table, game, seats, await shoe(), "all");
+    }
     if (game.state.bets.length === 0 || !pauseOver(game.state)) return null;
     const timeUp = game.dealAt !== null && Date.now() >= game.dealAt.getTime();
     if (!timeUp && !allReady(game.state)) return null;
-    return deal(table, game, shoe);
+    return deal(table, game, seats, shoe);
   });
 }
 

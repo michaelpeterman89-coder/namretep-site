@@ -401,7 +401,7 @@ export async function shutTable(table: GameTable, roundInProgress: boolean) {
     }
   }
   if (table.game === "craps") await returnAllCrapsBets(table.id);
-  if (table.game === "baccarat") await returnAllBaccaratBets(table.id);
+  if (table.game === "baccarat") await returnAllBaccaratBets(table);
   const { error } = await admin
     .from("game_tables")
     .update({ status: "closed", closed_at: new Date().toISOString(), last_activity_at: new Date().toISOString() })

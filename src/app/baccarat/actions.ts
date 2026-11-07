@@ -7,6 +7,7 @@ import {
   baccaratBet,
   baccaratClear,
   baccaratDeal,
+  baccaratFlip,
   baccaratRebet,
   createBaccaratTable,
   getBaccaratView,
@@ -90,6 +91,17 @@ export async function baccaratClearAction(tableId: unknown): Promise<BaccaratRes
 
 export async function baccaratDealAction(tableId: unknown): Promise<BaccaratResult> {
   return run(tableId, (table, playerId) => baccaratDeal(table, playerId));
+}
+
+/** Turns over one card, or every card that's out when no side is given. */
+export async function baccaratFlipAction(tableId: unknown, side: unknown, index: unknown): Promise<BaccaratResult> {
+  return run(tableId, (table, playerId) => {
+    if (side === null) return baccaratFlip(table, playerId, "all");
+    if ((side !== "player" && side !== "banker") || (index !== 0 && index !== 1 && index !== 2)) {
+      throw new GameError("That card isn't on the table.");
+    }
+    return baccaratFlip(table, playerId, { side, index });
+  });
 }
 
 export async function baccaratSitAction(tableId: unknown, seatNumber: unknown): Promise<BaccaratResult> {
