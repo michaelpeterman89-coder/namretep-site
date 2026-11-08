@@ -5,7 +5,9 @@ Fantasy sports pages at `/fantasy`, using the Yahoo Fantasy Sports API. So far t
 ## Status
 
 - Work happens on the `fantasy` branch. Don't merge or push to `main` until the owner says so.
-- Yahoo API access application submitted 2026-11-08; no reply yet. The app is registered, but we don't know if it can use the API before review.
+- Yahoo API access application submitted 2026-11-08; no reply yet.
+- First real login (2026-11-08): login, token exchange, and encrypted storage work. Every API call tried returns `403 "This application is not authorized to perform this action"`, even `/game/nfl`, so the block is on the app rather than the user, most likely pending Yahoo's review. League pages wait for this. Retry `/fantasy/connect` after Yahoo replies; no reconnect should be needed unless Yahoo says so.
+- Not yet seen working: a successful data response (including its JSON shape) and a live token renewal.
 - First league to test against: the owner's football league. Read its scoring type from Yahoo; keep pages generic.
 
 ### Before merging to main
@@ -69,7 +71,7 @@ Tokens are server-only, like the Supabase secret key.
 Yahoo requires an exact https redirect address.
 
 - **Preview:** `https://namretep-site1-git-fantasy-namretep.vercel.app/api/yahoo/callback` is registered alongside production. Start the login from that address, because cookies don't carry over from a per-deployment one; the connect action sends you there if needed.
-- **Local:** there's no Connect button. Connect on the preview, then `npm run dev` reuses the saved connection through the same Supabase project and encryption key. Not yet tried with a real connection.
+- **Local:** there's no Connect button. Connect on the preview, then `npm run dev` reuses the saved connection through the same Supabase project and encryption key. Confirmed that a local script can read and decrypt it; the site's own pages haven't been tried locally with it yet.
 
 ## Who can see a league
 
