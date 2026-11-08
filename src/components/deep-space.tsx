@@ -16,12 +16,12 @@ type DeepObject = {
 };
 
 const OBJECTS: DeepObject[] = [
-  { name: "andromeda", w: 260, h: 130, opacity: 0.35, drift: 90, show: "block", at: { right: "7%", top: "19%" } },
-  { name: "orion", w: 180, h: 180, opacity: 0.3, drift: 60, show: "block", at: { left: "3%", top: "68%" } },
-  { name: "whirlpool", w: 150, h: 130, opacity: 0.35, drift: 120, show: "hidden md:block", at: { left: "9%", top: "14%" } },
-  { name: "ring", w: 90, h: 90, opacity: 0.3, drift: 70, show: "hidden md:block", at: { right: "13%", top: "74%" } },
-  { name: "cluster", w: 120, h: 120, opacity: 0.35, drift: 100, show: "hidden min-[1600px]:block", at: { left: "14%", top: "43%" } },
-  { name: "jet", w: 210, h: 120, opacity: 0.35, drift: 80, show: "hidden min-[1600px]:block", at: { right: "4%", top: "50%" } },
+  { name: "andromeda", w: 260, h: 130, opacity: 0.35, drift: 9, show: "block", at: { right: "7%", top: "19%" } },
+  { name: "orion", w: 180, h: 180, opacity: 0.3, drift: 6, show: "block", at: { left: "3%", top: "68%" } },
+  { name: "whirlpool", w: 150, h: 130, opacity: 0.35, drift: 12, show: "hidden md:block", at: { left: "9%", top: "14%" } },
+  { name: "ring", w: 90, h: 90, opacity: 0.3, drift: 7, show: "hidden md:block", at: { right: "13%", top: "74%" } },
+  { name: "cluster", w: 120, h: 120, opacity: 0.35, drift: 10, show: "hidden min-[1600px]:block", at: { left: "14%", top: "43%" } },
+  { name: "jet", w: 210, h: 120, opacity: 0.35, drift: 8, show: "hidden min-[1600px]:block", at: { right: "4%", top: "50%" } },
 ];
 
 export function DeepSpace() {
