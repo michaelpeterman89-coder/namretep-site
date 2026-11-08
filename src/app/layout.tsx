@@ -3,6 +3,7 @@ import { Press_Start_2P, Space_Grotesk } from "next/font/google";
 import Link from "next/link";
 import { Suspense } from "react";
 import { CrtOverlay, CrtToggle } from "@/components/crt";
+import { DeepSpace } from "@/components/deep-space";
 import { HeaderAccount } from "@/components/header-account";
 import { SoundToggle } from "@/components/sound-toggle";
 import "./globals.css";
@@ -35,10 +36,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </a>
         <div aria-hidden className="space-bg">
           <div className="nebula" />
+          <DeepSpace />
           <div className="stars stars-far" />
           <div className="stars stars-mid" />
           <div className="stars stars-near" />
-          <div className="planet" />
         </div>
 
         {/* Above the page, so the account menu opens over it. */}

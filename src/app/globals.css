@@ -139,27 +139,20 @@ input:focus-visible,
   }
 }
 
-.planet {
+/* Galaxies and nebulae (see components/deep-space.tsx), each pixel doubled on very wide screens. */
+.deep-object {
   position: absolute;
-  right: -6rem;
-  bottom: -6rem;
-  width: 22rem;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #6a4bd6, #2a1a6e 55%, #0d0a2b 80%);
-  box-shadow:
-    0 0 60px #7b3eff55,
-    inset -30px -20px 60px #06041a;
-  opacity: 0.7;
+  width: calc(var(--w) * 1px);
+  height: calc(var(--h) * 1px);
+  background-size: 100% 100%;
+  image-rendering: pixelated;
 }
 
-.planet::after {
-  content: "";
-  position: absolute;
-  inset: 42% -25%;
-  border: 6px solid #ff3ea566;
-  border-radius: 50%;
-  transform: rotate(-18deg);
+@media (min-width: 1600px) {
+  .deep-object {
+    width: calc(var(--w) * 2px);
+    height: calc(var(--h) * 2px);
+  }
 }
 
 /* ---------- CRT overlay ---------- */

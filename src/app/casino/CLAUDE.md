@@ -92,7 +92,7 @@ Phases 1–6 are done, and phase 7 is under way (Hold'em, Craps, and Baccarat ar
 
 The look is **inspired by** chunky pixel-art roguelike card games (Balatro-style), set **in outer space**. All art, fonts, and assets must be **original or properly licensed**; do not copy Balatro's assets, fonts, or logos.
 
-- Dark space backgrounds: deep navy/purple, slow-drifting starfields, nebula glows, distant planets
+- Dark space backgrounds: deep navy/purple, slow-drifting starfields, nebula glows, distant galaxies and nebulae (`scripts/generate-deep-space.mjs`)
 - Pixel-art cards with thick outlines; slightly oversized, tactile, bouncy card animations (deal, flip, wobble, shake on big wins)
 - A subtle **CRT / scanline** overlay effect (with a setting to turn it off)
 - Bright neon accents (magenta, cyan, gold) for chips, buttons, and win effects
