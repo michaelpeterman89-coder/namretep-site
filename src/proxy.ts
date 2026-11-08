@@ -13,6 +13,7 @@ const SIGNED_IN_ONLY = [
   "/casino/baccarat",
   "/casino/tables",
   "/casino/leaderboard",
+  "/fantasy/connect",
 ];
 const SIGNED_OUT_ONLY = ["/login", "/signup"];
 

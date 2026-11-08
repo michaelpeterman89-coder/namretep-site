@@ -1,6 +1,6 @@
 # Namretep Fantasy
 
-Fantasy sports pages at `/fantasy`, using the Yahoo Fantasy Sports API. So far there's only the project setup and a landing page; this is the plan and what we know so far. Site-wide rules are in the root `CLAUDE.md`. Don't touch casino code from here.
+Fantasy sports pages at `/fantasy`, using the Yahoo Fantasy Sports API. So far there's a landing page and the Yahoo connection (`/fantasy/connect`, admins only), which lists the connected account's leagues; league pages come next. Site-wide rules are in the root `CLAUDE.md`. Don't touch casino code from here.
 
 ## Status
 
@@ -12,9 +12,15 @@ Fantasy sports pages at `/fantasy`, using the Yahoo Fantasy Sports API. So far t
 
 - Settle whether Yahoo allows showing league data publicly (see "Who can see a league").
 - Add Yahoo's official logo to the attribution. It isn't in the repo yet.
-- Restore the production redirect address in the Yahoo app if it was swapped for testing.
 - Add any new env vars to Vercel for Production.
 - `projects.ts` lists Fantasy as `live` so it's testable on the preview. Merging puts it on the home page, in the header, and on the account page for everyone.
+
+## Code layout
+
+- `src/lib/fantasy/yahoo/`: logic with no database or secrets, so it can be tested (`oauth`, `token-crypto`, `token-renewal`, `leagues`, `errors`).
+- `src/server/fantasy/yahoo-connection.ts`: the only code that touches tokens. `yahoo-read.ts`: GET-only Yahoo calls. Manage features get their own file.
+- `src/app/api/yahoo/callback/route.ts`: Yahoo's return address. It needs `await connection()`, or the build can save a fixed copy of it.
+- `src/app/fantasy/connect/`: the connection page and its server actions.
 
 ## Scope
 
@@ -30,7 +36,8 @@ Docs: https://sports.yahoo.com/developer/docs/ (the old `developer.yahoo.com/fan
 - **Base URL:** `https://fantasysports.yahooapis.com/fantasy/v2`
 - **Keys:** league `<game_id>.l.<league_id>`, team `<game_id>.l.<league_id>.t.<team_id>`, player `<game_id>.p.<player_id>`. The separator is a lowercase L.
 - **Current user:** `/users;use_login=1/games`
-- **Format:** the docs only show XML. `format=json` is reported by other developers but isn't in the parts of the docs we read, so test it first. Ask the owner before adding an XML parser.
+- **Current user's leagues:** `/users;use_login=1/games;is_available=1;game_types=full/leagues`. `is_available=1` means in season only, and `game_types=full` skips pick'em games, since asking for leagues on a game that doesn't support them throws an error. Off-season, this returns nothing.
+- **Format:** the docs only show XML and never mention `format=json`, which is reported by other developers. `yahoo-read.ts` uses it, and the first real login tests it. Yahoo's JSON keeps numbered keys from the XML, so don't rely on one exact shape. Ask the owner before adding an XML parser.
 - **Rate limits:** no number is published. Yahoo says it may throttle excessive use, so cache responses.
 - **Access rule from Yahoo:** a user can only read private leagues they belong to, or public leagues.
 - **Attribution (required):** show "Fantasy data provided by Yahoo Fantasy" with a link back to Yahoo Fantasy, plus the official logo, unaltered.
@@ -42,7 +49,7 @@ Docs: https://sports.yahoo.com/developer/docs/ (the old `developer.yahoo.com/fan
 
 - **Authorize:** `https://api.login.yahoo.com/oauth2/request_auth`
 - **Tokens:** `POST https://api.login.yahoo.com/oauth2/get_token`
-- **Callback:** `/api/yahoo/callback`. The registered production address is `https://www.namretep.com/api/yahoo/callback`. Don't build the redirect address from the request's Host header.
+- **Callback:** `/api/yahoo/callback`. Both registered addresses are in `oauth.ts`, chosen by `VERCEL_ENV`. Don't build the redirect address from the request's Host header.
 - **Forged logins:** send a random `state`, keep a copy in an httpOnly cookie, and check it and the site login on the callback. `src/proxy.ts` skips `/api`, so these routes must check the login themselves.
 - **Access tokens** last 1 hour. Renew shortly before they expire.
 - **Refresh tokens** may rotate: Yahoo can revoke the old one when it issues a new one. Allow one renewal at a time per connection using a database lock, or two simultaneous renewals can break the connection. If renewal fails for good, show **Reconnect**.
@@ -54,15 +61,15 @@ Tokens are server-only, like the Supabase secret key.
 
 - `yahoo_connections` has one row per site account, never one global token.
 - Row Level Security is on with no player policies, and access is granted only to `service_role`. Read it with `createAdminClient()` after checking who is asking.
-- Encrypt tokens in the app with `YAHOO_TOKEN_ENCRYPTION_KEY` (pending the owner's OK). Every environment sharing the database needs the same key.
-- Only admins can connect for now (pending the owner's OK).
+- Tokens are encrypted in the app with `YAHOO_TOKEN_ENCRYPTION_KEY`, and each is tied to its site account. Every environment sharing the database needs the same key. Changing it means reconnecting.
+- Only admins can connect for now (`connectYahooAction` and the callback both check).
 
 ### Testing redirects
 
 Yahoo requires an exact https redirect address.
 
-- **Preview:** register `https://<fantasy-branch-address>/api/yahoo/callback`. Use the stable branch address from Vercel, not a per-deployment one. If Yahoo allows only one address, swap it temporarily and restore production before launch.
-- **Local:** connect on the preview, then let `npm run dev` reuse the saved connection. This needs the same Supabase project and encryption key; confirm before relying on it.
+- **Preview:** `https://namretep-site1-git-fantasy-namretep.vercel.app/api/yahoo/callback` is registered alongside production. Start the login from that address, because cookies don't carry over from a per-deployment one; the connect action sends you there if needed.
+- **Local:** there's no Connect button. Connect on the preview, then `npm run dev` reuses the saved connection through the same Supabase project and encryption key. Not yet tried with a real connection.
 
 ## Who can see a league
 
