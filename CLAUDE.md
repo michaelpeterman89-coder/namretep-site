@@ -8,12 +8,12 @@ Namretep is a home for several projects that share one account. The home page (`
 
 - `/` is the hub, `/account` is the shared account page (username, avatar, log out), `/admin` is site-wide admin, and login and signup are shared.
 - Each project lives under its own path with its own `layout.tsx` for its menu and notices. Casino pages are all under `/casino` (games, tables, leaderboard, how-to-play, and `/casino/profile` for chips and stats). Old casino addresses redirect there (`next.config.ts`).
-- The site header only has things every project shares; project-specific things like the chip balance go in the project's own menu.
+- The site header only has things every project shares (logo, project links, account menu); project-specific things like the chip balance go in the project's own menu, a `ProjectBar` with `ProjectNav` links.
 - Accounts are shared through `profiles`. Casino data (chips, refills, stats) still lives on `profiles` and the casino tables; split it into its own table when a second project needs accounts.
 
 ## Adding a project
 
-List it in `src/lib/projects.ts` (it then appears on the home page, in the header, and on the account page), give it a folder under `src/app/<path>/` with its own `layout.tsx`, and add any signed-in-only paths to `SIGNED_IN_ONLY` in `src/proxy.ts`.
+List it in `src/lib/projects.ts` (it then appears on the home page, in the header, and on the account page), give it a folder under `src/app/<path>/` with its own `layout.tsx` (use `ProjectBar` for its menu), and add any signed-in-only paths to `SIGNED_IN_ONLY` in `src/proxy.ts`.
 
 Live site: www.namretep.com (Vercel, domain from GoDaddy). Repo: GitHub, deploys via Vercel.
 
@@ -61,7 +61,7 @@ Secrets live in `.env.local` (never committed) and in Vercel Environment Variabl
 
 ## Admin
 
-- Admins (`profiles.is_admin`) get an **Admin** link in the header and the pages under `/admin`: site overview, players (search, give/take chips, rename, make/remove admin, suspend/restore), open tables (close any table, even mid-hand), and an admin log. Everyone else gets a 404 there.
+- Admins (`profiles.is_admin`) get an **Admin** link in the account menu and the pages under `/admin`: site overview, players (search, give/take chips, rename, make/remove admin, suspend/restore), open tables (close any table, even mid-hand), and an admin log. Everyone else gets a 404 there.
 - Every admin change goes through a SQL function that re-checks the caller is an admin and writes a row to `admin_actions` (the admin log). Chip changes also go in `chip_ledger` as `admin_adjust`.
 - Suspending sets `profiles.suspended_at` (locks the account out of every page at once), bans the login in Supabase Auth, and takes them off their tables. Admins can't remove their own admin access or suspend themselves.
 - Admins can reset a player's Leaders stats (admin chips and profit and loss), for one player or everyone who's had admin chip changes (`chip_ledger.stats_cleared_at`). Ledger rows and balances don't change, and players must be away from tables first.

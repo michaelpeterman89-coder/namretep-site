@@ -41,15 +41,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <div className="planet" />
         </div>
 
-        <header className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-5 sm:px-6">
+        {/* Above the page, so the account menu opens over it. */}
+        <header className="relative z-40 mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-2 px-4 py-3 sm:gap-x-8 sm:px-6 sm:py-4">
           <Link
             href="/"
-            className="font-display text-sm text-neon-gold drop-shadow-[3px_3px_0_var(--color-ink)] sm:text-xl"
+            className="shrink-0 font-display text-sm text-neon-gold drop-shadow-[3px_3px_0_var(--color-ink)] sm:text-xl"
           >
             NAMRETEP
           </Link>
           {/* Reads the login cookie, so it streams in after the rest of the page. */}
-          <Suspense fallback={<div className="h-10 w-32" />}>
+          <Suspense fallback={<div className="h-11 flex-1" />}>
             <HeaderAccount />
           </Suspense>
         </header>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ProjectBar } from "@/components/project-bar";
 import { getCurrentPlayer } from "@/lib/auth";
 import { formatChips } from "@/lib/chips";
 import { guidePath } from "@/lib/games/catalog";
@@ -11,15 +12,12 @@ import { CasinoNav } from "./casino-nav";
 export default function CasinoLayout({ children }: LayoutProps<"/casino">) {
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-space-700/70 pb-3">
-        <Link href="/casino" className="font-display text-xs text-neon-magenta hover:text-starlight">
-          CASINO
-        </Link>
+      <ProjectBar name="CASINO" href="/casino" color="text-neon-magenta">
         {/* Reads the login cookie, so it streams in after the rest of the page. */}
-        <Suspense fallback={<div className="h-8 w-48" />}>
+        <Suspense fallback={<div className="h-11 flex-1" />}>
           <CasinoMenu />
         </Suspense>
-      </div>
+      </ProjectBar>
       {children}
       <div className="mt-12 flex flex-col items-center gap-3 text-center text-sm text-starlight/60">
         <p>Virtual chips only. No real money, no purchases, no cash-out.</p>
@@ -34,17 +32,17 @@ export default function CasinoLayout({ children }: LayoutProps<"/casino">) {
 async function CasinoMenu() {
   const player = await getCurrentPlayer();
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+    <>
       <CasinoNav signedIn={Boolean(player)} />
       {player && (
         <Link
           href="/casino/profile"
-          className="font-display text-xs text-neon-gold hover:text-starlight"
-          aria-label={`Your chips: ${formatChips(player.chips)}`}
+          className="ml-auto flex items-baseline gap-2 rounded-sm border-2 border-neon-gold/40 bg-neon-gold/10 px-2.5 py-1.5 font-display hover:border-neon-gold"
         >
-          {formatChips(player.chips)}
+          <span className="text-[0.5rem] text-starlight/80">CHIPS</span>
+          <span className="text-xs text-neon-gold">{formatChips(player.chips)}</span>
         </Link>
       )}
-    </div>
+    </>
   );
 }
