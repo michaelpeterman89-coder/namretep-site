@@ -512,39 +512,9 @@ input:focus-visible,
   }
 }
 
-/* Home page: a ringed planet with a moon in orbit. */
-.hub-planet {
-  border: 3px solid var(--color-ink);
-  background:
-    radial-gradient(circle at 32% 28%, rgb(255 255 255 / 0.45), transparent 32%),
-    radial-gradient(circle at 70% 75%, rgb(10 7 22 / 0.45), transparent 55%),
-    var(--planet);
-  box-shadow: 0 0 28px color-mix(in srgb, var(--planet) 60%, transparent), 4px 4px 0 var(--color-ink);
-}
-
-.hub-ring {
-  width: 170%;
-  height: 34%;
-  border: 3px solid var(--color-neon-gold);
-  border-radius: 50%;
-  transform: translate(-50%, -50%) rotate(-18deg);
-  box-shadow: 0 0 10px rgb(255 207 62 / 0.5);
-}
-
-.hub-moon {
-  top: 50%;
-  left: 50%;
-  margin: -0.625rem;
-  animation: hub-orbit 14s linear infinite;
-}
-
-@keyframes hub-orbit {
-  from {
-    transform: rotate(0deg) translateX(min(40vw, 6.5rem)) rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg) translateX(min(40vw, 6.5rem)) rotate(-360deg);
-  }
+/* Home page: the black hole draws its own stars (black-hole.tsx), so the drifting ones step aside. */
+body:has(.black-hole-sky) .stars {
+  display: none;
 }
 
 /* ---------- Chips (see components/chip.tsx) ---------- */
