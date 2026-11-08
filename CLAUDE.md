@@ -4,6 +4,8 @@ Namretep is a home for several projects that share one account. The home page (`
 
 **Casino details (game rules, engines, tables, stats, Blackjack, adding a game, theme) are in `src/app/casino/CLAUDE.md`.**
 
+**Fantasy details (Yahoo API, login and tokens, who can see a league, future plans) are in `src/app/fantasy/CLAUDE.md`.**
+
 ## Site layout
 
 - `/` is the hub, `/account` is the shared account page (username, avatar, log out), `/admin` is site-wide admin, and login and signup are shared.

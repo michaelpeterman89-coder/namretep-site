@@ -29,4 +29,13 @@ export const PROJECTS: Project[] = [
     accountPath: "/casino/profile",
     accountNote: "Your chips, daily refill, and stats for every game.",
   },
+  {
+    key: "fantasy",
+    name: "Fantasy",
+    path: "/fantasy",
+    tagline: "Fantasy sports league standings, matchups, rosters, and more, using Yahoo Fantasy data.",
+    status: "live",
+    text: "text-neon-lime",
+    border: "border-neon-lime hover:bg-neon-lime/10",
+  },
 ];
