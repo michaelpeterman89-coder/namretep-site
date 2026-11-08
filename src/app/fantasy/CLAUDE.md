@@ -2,20 +2,44 @@
 
 Fantasy sports pages at `/fantasy`, using the Yahoo Fantasy Sports API. So far there's a landing page and the Yahoo connection (`/fantasy/connect`, admins only), which lists the connected account's leagues; league pages come next. Site-wide rules are in the root `CLAUDE.md`. Don't touch casino code from here.
 
-## Status
+## Current status / where we left off
 
+**Paused, waiting on Yahoo API access approval.** Applied 2026-11-08; no reply yet. Whether the application included the Client ID is unconfirmed, so ask the owner, because Yahoo needs it to link approval to the existing app.
+
+- **Works:** Yahoo login, token exchange, and encrypted token storage. The owner's account is connected.
+- **Blocked:** every data call returns `403 "This application is not authorized to perform this action"`, even `/game/nfl`. The block is on the app, most likely until Yahoo's review finishes.
+- **Not yet seen working:** a successful data response (including its JSON shape) and a live token renewal.
 - Work happens on the `fantasy` branch. Don't merge or push to `main` until the owner says so.
-- Yahoo API access application submitted 2026-11-08; no reply yet.
-- First real login (2026-11-08): login, token exchange, and encrypted storage work. Every API call tried returns `403 "This application is not authorized to perform this action"`, even `/game/nfl`, so the block is on the app rather than the user, most likely pending Yahoo's review. League pages wait for this. Retry `/fantasy/connect` after Yahoo replies; no reconnect should be needed unless Yahoo says so.
-- Not yet seen working: a successful data response (including its JSON shape) and a live token renewal.
-- First league to test against: the owner's football league. Read its scoring type from Yahoo; keep pages generic.
+
+### How to check for approval
+
+Reload https://namretep-site1-git-fantasy-namretep.vercel.app/fantasy/connect while signed in as an admin. If your league is listed, access is approved. If Yahoo has approved the app and it's still 403, click **Reconnect Yahoo** and reload.
+
+### Plan from here
+
+1. **Confirm real data:** the owner's football league appears at `/fantasy/connect`. Check Yahoo's real JSON against `parseLeagues`, and read the roster, team, and league docs.
+2. **First pages:** standings and matchups with a week picker, with the shared-league table and per-league cache. Admin-only until step 3.
+3. **Member access:** limit league pages to league members (see "Who can see a league").
+4. **Team and league activity:** rosters and transactions.
+5. **Extras:** league settings, draft results, player stats, then season trends.
+6. **Launch check:** security review, build, lint, and tests. Then merge only when the owner says so.
 
 ### Before merging to main
 
-- Settle whether Yahoo allows showing league data publicly (see "Who can see a league").
 - Add Yahoo's official logo to the attribution. It isn't in the repo yet.
-- Add any new env vars to Vercel for Production.
-- `projects.ts` lists Fantasy as `live` so it's testable on the preview. Merging puts it on the home page, in the header, and on the account page for everyone.
+- Limit league pages to league members, not the public.
+- Get Yahoo's answer on showing league data to other members, and read the API Access and Use Agreement.
+- Merge the latest `main` first. It has moved on, and an unmerged `header-layout` branch changes the shared header and project menus, so the fantasy menu may need to follow it.
+- `projects.ts` lists Fantasy as `live`, so merging shows it on the home page, in the header, and on the account page for everyone.
+
+**Already done, no action needed:** `YAHOO_CLIENT_ID`, `YAHOO_CLIENT_SECRET`, and `YAHOO_TOKEN_ENCRYPTION_KEY` are in Vercel (Production and Preview) and `.env.local`. Both redirect addresses are registered with Yahoo. The `yahoo_connections` table is live.
+
+### Later
+
+- **Read/Write permission for managing leagues:** Yahoo currently says write access isn't available.
+- **Per-user Yahoo connections:** other site users connect their own accounts.
+
+Details are in "Future plans".
 
 ## Code layout
 
@@ -26,7 +50,7 @@ Fantasy sports pages at `/fantasy`, using the Yahoo Fantasy Sports API. So far t
 
 ## Scope
 
-- **Now:** one connected Yahoo account (the owner's), read-only, with the owner's league viewable by anyone (see "Who can see a league").
+- **Now:** one connected Yahoo account (the owner's), read-only, with the owner's league viewable by league members (see "Who can see a league").
 - **Later:** other users connect their own Yahoo accounts to view their own leagues.
 - **Later, if Yahoo allows it:** manage features (roster moves, lineups).
 - **Maybe later:** sportsbook data (see "Future plans").
@@ -39,7 +63,7 @@ Docs: https://sports.yahoo.com/developer/docs/ (the old `developer.yahoo.com/fan
 - **Keys:** league `<game_id>.l.<league_id>`, team `<game_id>.l.<league_id>.t.<team_id>`, player `<game_id>.p.<player_id>`. The separator is a lowercase L.
 - **Current user:** `/users;use_login=1/games`
 - **Current user's leagues:** `/users;use_login=1/games;is_available=1;game_types=full/leagues`. `is_available=1` means in season only, and `game_types=full` skips pick'em games, since asking for leagues on a game that doesn't support them throws an error. Off-season, this returns nothing.
-- **Format:** the docs only show XML and never mention `format=json`, which is reported by other developers. `yahoo-read.ts` uses it, and the first real login tests it. Yahoo's JSON keeps numbered keys from the XML, so don't rely on one exact shape. Ask the owner before adding an XML parser.
+- **Format:** the docs only show XML and never mention `format=json`, which is reported by other developers. `yahoo-read.ts` uses it. Yahoo's 403 errors came back as JSON, but no successful response has been seen yet. Yahoo's JSON reportedly keeps numbered keys from the XML, so don't rely on one exact shape. Ask the owner before adding an XML parser.
 - **Rate limits:** no number is published. Yahoo says it may throttle excessive use, so cache responses.
 - **Access rule from Yahoo:** a user can only read private leagues they belong to, or public leagues.
 - **Attribution (required):** show "Fantasy data provided by Yahoo Fantasy" with a link back to Yahoo Fantasy, plus the official logo, unaltered.
@@ -75,35 +99,31 @@ Yahoo requires an exact https redirect address.
 
 ## Who can see a league
 
-**First phase:** public, no login. Each shared league has a `visibility` setting (`public` or `members`), so access can be tightened without rebuilding pages.
+**Decision: league members only, not public.** This replaces the earlier plan to start public. Until member access is built, league pages are admin-only. Before anyone else gets access, read Yahoo's agreement or get Yahoo's answer on showing league data to other members.
 
-**Before public pages reach production:** read Yahoo's agreement or get Yahoo's answer on showing league data publicly, since the application may have described a narrower audience.
+**How members get access (recommended; confirm with the owner before building):** an invite link that a friend opens while signed in to a site account, which adds them to the league's member list. Removing one person doesn't affect anyone else.
 
-Public pages must:
+Alternative: a private link with no account. It's easiest for friends, but it can be forwarded, and access can only be ended for everyone at once by changing the link.
+
+League pages must:
 
 - Show only an allowlisted set of fields. Never pass Yahoo's raw response to a page, and leave out manager emails and Yahoo IDs if Yahoo returns them.
 - Use team names rather than managers' personal names unless the owner decides otherwise.
 - Ask search engines not to index them. `layout.tsx` sets this for all of `/fantasy`. It doesn't restrict access.
-- Serve from the per-league cache, so public traffic can't cause unlimited Yahoo calls.
-
-Options for later:
-
-- **Members only:** an invite link that a friend opens while signed in to a site account, which adds them to the league's member list. Removing one person doesn't affect anyone else.
-- **Any logged-in site user:** simple, but signup is open, so it's close to public.
-- **Private link, no account:** easiest for friends, but it can be forwarded and access can only be ended for everyone at once by changing the link.
+- Serve from the per-league cache, so more viewers can't cause unlimited Yahoo calls.
 
 ### Rules for shared viewing
 
 Viewers have no Yahoo connection, so the server reads the league with the connected owner's token. That makes these rules important:
 
 - A league is only readable with someone else's token if its owner shared it. Never pass an arbitrary league key from a URL to the owner's token.
-- Check the league's `visibility` on the server for every page and route, before any Yahoo call. For `members`, also check membership.
+- Check membership on the server for every page and route, before any Yahoo call.
 - Shared viewing is always read-only. Manage features must only ever use the acting user's own token.
 - Viewers never see tokens or the owner's other leagues.
 - Cache shared league data per league, so more viewers don't mean more Yahoo calls. Private data for a user's own connection stays cached per user.
 - If the owner's connection breaks, viewers see a plain "temporarily unavailable" message; only the owner sees **Reconnect**.
 
-Likely tables: `fantasy_shared_leagues` (league key, owner, visibility), then for members-only access a hashed invite token and `fantasy_league_members` (league, user).
+Likely tables: `fantasy_shared_leagues` (league key, owner, hashed invite token) and `fantasy_league_members` (league, user).
 
 ## Future plans (don't build yet)
 
