@@ -1,82 +1,72 @@
 import Link from "next/link";
+import { PROJECTS } from "@/lib/projects";
 
-// Playable games use their own color (see GAMES in lib/games/catalog).
-const games: { name: string; status: string; accent: string; border?: string; href?: string }[] = [
-  { name: "Blackjack", status: "Play now", accent: "text-neon-magenta", border: "border-neon-magenta hover:bg-neon-magenta/10", href: "/blackjack" },
-  { name: "Roulette", status: "Later", accent: "text-starlight/70" },
-  { name: "Craps", status: "Play now", accent: "text-neon-cyan", border: "border-neon-cyan hover:bg-neon-cyan/10", href: "/craps" },
-  { name: "Baccarat", status: "Play now", accent: "text-neon-lime", border: "border-neon-lime hover:bg-neon-lime/10", href: "/baccarat" },
-  { name: "Texas Hold'em", status: "Play now", accent: "text-neon-gold", border: "border-neon-gold hover:bg-neon-gold/10", href: "/poker" },
-  { name: "Video Poker", status: "Later", accent: "text-starlight/70" },
-];
+// The front door to every Namretep project. Projects come from lib/projects,
+// so a new one shows up here as soon as it's listed there.
 
-function PixelCard({ rank, suit, red, tilt }: { rank: string; suit: string; red?: boolean; tilt: string }) {
+/** A small pixel planet with a ring, drawn in CSS. */
+function Planet({ color, size, ring }: { color: string; size: string; ring?: boolean }) {
   return (
-    <div
-      className={`pixel-card flex h-32 w-22 flex-col justify-between p-2 font-display sm:h-40 sm:w-28 ${
-        red ? "text-neon-magenta" : "text-ink"
-      }`}
-      style={{ "--tilt": tilt } as React.CSSProperties}
-    >
-      <span className="text-sm">{rank}</span>
-      <span className="self-center text-3xl sm:text-4xl">{suit}</span>
-      <span className="rotate-180 text-sm">{rank}</span>
-    </div>
+    <span aria-hidden className="relative inline-block" style={{ width: size, height: size }}>
+      <span className="hub-planet absolute inset-0 rounded-full" style={{ "--planet": color } as React.CSSProperties} />
+      {ring && <span className="hub-ring absolute top-1/2 left-1/2" />}
+    </span>
   );
 }
 
 export default function Home() {
+  const live = PROJECTS.filter((p) => p.status === "live");
+  const soon = PROJECTS.filter((p) => p.status === "soon");
+
   return (
-    <div className="flex flex-col gap-12 pt-6 sm:pt-12">
+    <div className="flex flex-col gap-12 pt-8 sm:pt-16">
       <section className="flex flex-col items-center gap-8 text-center">
-        <div className="flex gap-4" aria-hidden>
-          <PixelCard rank="A" suit="♠" tilt="-6deg" />
-          <PixelCard rank="K" suit="♥" red tilt="5deg" />
+        <div className="hub-orbit relative grid size-40 place-items-center sm:size-52" aria-hidden>
+          <Planet color="#7b3eff" size="5rem" ring />
+          <span className="hub-moon absolute">
+            <Planet color="#3ef0ff" size="1.25rem" />
+          </span>
         </div>
-        <h1 className="font-display text-xl leading-relaxed text-starlight drop-shadow-[4px_4px_0_var(--color-ink)] sm:text-3xl">
-          Casino games <span className="text-neon-magenta">among the stars</span>
+        <h1 className="font-display text-2xl leading-relaxed text-neon-gold drop-shadow-[4px_4px_0_var(--color-ink)] sm:text-4xl">
+          NAMRETEP
         </h1>
         <p className="max-w-xl text-lg text-starlight/80">
-          Create a table, set the rules your way, and play solo or with friends. Track your stats
-          and see how often you play by the book.
+          A small universe of games and projects, all in one place. One account works across every one of them.
         </p>
-        <Link href="/signup" className="pixel-btn bg-neon-magenta text-ink">
-          Get 10,000 free chips
-        </Link>
-        <p className="font-display text-xs text-neon-gold">Virtual chips only</p>
       </section>
 
-      <section aria-labelledby="games-heading" className="pixel-panel p-5 sm:p-8">
-        <h2 id="games-heading" className="mb-6 font-display text-sm text-neon-cyan">
-          Games
+      <section aria-labelledby="projects-heading" className="flex flex-col gap-5">
+        <h2 id="projects-heading" className="font-display text-sm text-neon-cyan">
+          Projects
         </h2>
-        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {games.map((game) => (
-            <li key={game.name}>
-              {game.href ? (
-                <Link
-                  href={game.href}
-                  className={`flex items-center justify-between rounded-md border-2 bg-space-950/60 px-4 py-3 ${game.border}`}
-                >
-                  <span className="font-semibold">{game.name}</span>
-                  <span className={`font-display text-[0.6rem] ${game.accent}`}>{game.status} →</span>
-                </Link>
-              ) : (
-                <div className="flex items-center justify-between rounded-md border-2 border-space-700 bg-space-950/60 px-4 py-3">
-                  <span className="font-semibold">{game.name}</span>
-                  <span className={`font-display text-[0.6rem] ${game.accent}`}>{game.status}</span>
-                </div>
-              )}
+        <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {live.map((p) => (
+            <li key={p.key}>
+              <Link
+                href={p.path}
+                className={`pixel-panel flex h-full flex-col gap-3 border-2 p-6 transition-transform hover:-translate-y-1 ${p.border}`}
+              >
+                <span className={`font-display text-base ${p.text}`}>{p.name}</span>
+                <span className="text-starlight/80">{p.tagline}</span>
+                <span className={`mt-auto font-display text-[0.65rem] ${p.text}`}>Enter →</span>
+              </Link>
             </li>
           ))}
+          {soon.map((p) => (
+            <li key={p.key}>
+              <div className="flex h-full flex-col gap-3 rounded-lg border-2 border-dashed border-space-700 p-6">
+                <span className="font-display text-base text-starlight/70">{p.name}</span>
+                <span className="text-starlight/60">{p.tagline}</span>
+                <span className="mt-auto font-display text-[0.65rem] text-starlight/50">Coming soon</span>
+              </div>
+            </li>
+          ))}
+          <li aria-hidden className="hidden lg:block">
+            <div className="flex h-full min-h-40 items-center justify-center rounded-lg border-2 border-dashed border-space-700/60 p-6 text-center font-display text-[0.6rem] text-starlight/40">
+              More on the way
+            </div>
+          </li>
         </ul>
-        <p className="text-sm text-starlight/70">
-          New here?{" "}
-          <Link href="/how-to-play" className="text-neon-cyan underline underline-offset-4">
-            Learn how to play every game
-          </Link>
-          .
-        </p>
       </section>
     </div>
   );

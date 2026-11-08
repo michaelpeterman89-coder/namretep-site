@@ -1,6 +1,17 @@
 # Namretep — Project Brief
 
-Namretep is a website for **configurable casino games** played with **virtual chips only** (no real money, no purchases, no cash-out). Players create tables for a game, choose that table's rules, play alone or invite other players to join, and build up per-game stats on their account.
+Namretep is a home for several projects that share one account. The home page (`/`) lists them from `src/lib/projects.ts`. The first project is the **casino** (`/casino`): **configurable casino games** played with **virtual chips only** (no real money, no purchases, no cash-out). Players create tables for a game, choose that table's rules, play alone or invite other players to join, and build up per-game stats on their account.
+
+## Site layout
+
+- `/` is the hub, `/account` is the shared account page (username, avatar, log out), `/admin` is site-wide admin, and login and signup are shared.
+- Each project lives under its own path with its own `layout.tsx` for its menu and notices. Casino pages are all under `/casino` (games, tables, leaderboard, how-to-play, and `/casino/profile` for chips and stats). Old casino addresses redirect there (`next.config.ts`).
+- The site header only has things every project shares; project-specific things like the chip balance go in the project's own menu.
+- Accounts are shared through `profiles`. Casino data (chips, refills, stats) still lives on `profiles` and the casino tables; split it into its own table when a second project needs accounts.
+
+## Adding a project
+
+List it in `src/lib/projects.ts` (it then appears on the home page, in the header, and on the account page), give it a folder under `src/app/<path>/` with its own `layout.tsx`, and add any signed-in-only paths to `SIGNED_IN_ONLY` in `src/proxy.ts`.
 
 Live site: www.namretep.com (Vercel, domain from GoDaddy). Repo: GitHub, deploys via Vercel.
 
@@ -106,7 +117,7 @@ Each table shows a short **rules summary** (e.g. "6D · S17 · 3:2 · DAS · LS"
 
 ## Adding a game
 
-Every game is listed once in `src/lib/games/catalog.ts` (name, page path, and its color for buttons and labels). A new game also needs a How to Play guide in `src/app/how-to-play/guides/` registered in `guides/index.ts` — the build fails without one, and the guide page, overview card, and links then appear automatically. Remove the game from `PLANNED_GAMES` when it launches.
+Every game is listed once in `src/lib/games/catalog.ts` (name, page path under `/casino`, and its color for buttons and labels). A new game also needs a How to Play guide in `src/app/casino/how-to-play/guides/` registered in `guides/index.ts` — the build fails without one, and the guide page, overview card, and links then appear automatically. Remove the game from `PLANNED_GAMES` when it launches.
 
 ## Future games (build after Blackjack is solid)
 Design the table/config/stats system so new games plug in without rewrites. Planned:

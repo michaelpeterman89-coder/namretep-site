@@ -1,10 +1,10 @@
-import { GAMES, type GameKey } from "@/lib/games/catalog";
+import { guidePath, type GameKey } from "@/lib/games/catalog";
 
 /** "How to play" for a game; opens in a new tab so players keep their seat. */
 export function GuideLink({ game }: { game: GameKey }) {
   return (
     <a
-      href={`/how-to-play${GAMES[game].path}`}
+      href={guidePath(game)}
       target="_blank"
       rel="noopener"
       className="text-xs text-neon-cyan underline underline-offset-4 hover:text-starlight"

@@ -21,10 +21,10 @@ export function validateEmail(email: string): string | null {
 }
 
 /**
- * Only allow redirects to paths on this site (e.g. "/profile"), never to
+ * Only allow redirects to paths on this site (e.g. "/casino"), never to
  * another domain like "//evil.example".
  */
-export function safeRedirectPath(value: unknown, fallback = "/profile"): string {
+export function safeRedirectPath(value: unknown, fallback = "/"): string {
   if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
     return fallback;
   }

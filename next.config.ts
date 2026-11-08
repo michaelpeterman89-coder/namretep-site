@@ -4,9 +4,17 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
-  // The old lobby is now the Tables page.
+  // The casino moved under /casino; old links, bookmarks, and invites still work.
   async redirects() {
-    return [{ source: "/lobby", destination: "/tables", permanent: true }];
+    const moved = ["blackjack", "poker", "craps", "baccarat", "tables", "leaderboard", "how-to-play"];
+    return [
+      { source: "/lobby", destination: "/casino/tables", permanent: true },
+      { source: "/profile", destination: "/casino/profile", permanent: true },
+      ...moved.flatMap((page) => [
+        { source: `/${page}`, destination: `/casino/${page}`, permanent: true },
+        { source: `/${page}/:path*`, destination: `/casino/${page}/:path*`, permanent: true },
+      ]),
+    ];
   },
   turbopack: {
     rules: {

@@ -60,7 +60,7 @@ export async function signUp(_prev: AuthFormState, formData: FormData): Promise<
     return { message: "Check your email to confirm your account, then log in.", values };
   }
 
-  redirect("/profile");
+  redirect("/");
 }
 
 export async function logIn(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {

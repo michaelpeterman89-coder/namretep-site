@@ -27,13 +27,13 @@ describe("validateEmail", () => {
 
 describe("safeRedirectPath", () => {
   it("allows paths on this site", () => {
-    expect(safeRedirectPath("/profile")).toBe("/profile");
+    expect(safeRedirectPath("/casino/profile")).toBe("/casino/profile");
   });
 
   it.each(["https://evil.example", "//evil.example", "/\\evil.example", null, undefined, 42])(
     "falls back for %s",
     (value) => {
-      expect(safeRedirectPath(value)).toBe("/profile");
+      expect(safeRedirectPath(value)).toBe("/");
     },
   );
 });

@@ -2,12 +2,23 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
-const SIGNED_IN_ONLY = ["/profile", "/blackjack", "/poker", "/craps", "/baccarat", "/tables", "/leaderboard", "/admin"];
+// The casino front page and its How to Play guides are open to everyone.
+const SIGNED_IN_ONLY = [
+  "/account",
+  "/admin",
+  "/casino/profile",
+  "/casino/blackjack",
+  "/casino/poker",
+  "/casino/craps",
+  "/casino/baccarat",
+  "/casino/tables",
+  "/casino/leaderboard",
+];
 const SIGNED_OUT_ONLY = ["/login", "/signup"];
 
 /**
  * Runs before each page request: refreshes the Supabase login cookie if it's
- * about to expire, and redirects between the auth pages and /profile.
+ * about to expire, and keeps signed-out visitors off pages that need an account.
  */
 export async function proxy(request: NextRequest) {
   const { url, key } = getSupabaseEnv();
@@ -38,7 +49,7 @@ export async function proxy(request: NextRequest) {
     return redirectKeepingCookies(request, response, "/login", pathname);
   }
   if (signedIn && SIGNED_OUT_ONLY.some((p) => pathname.startsWith(p))) {
-    return redirectKeepingCookies(request, response, "/profile");
+    return redirectKeepingCookies(request, response, "/");
   }
 
   return response;

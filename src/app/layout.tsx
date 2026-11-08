@@ -20,7 +20,7 @@ const bodyFont = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: "Namretep",
-  description: "Configurable casino games among the stars. Virtual chips only.",
+  description: "A small universe of games and projects among the stars.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -59,10 +59,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </main>
 
         <footer className="flex flex-col items-center gap-4 px-4 py-6 text-center text-sm text-starlight/60">
-          <p>Virtual chips only. No real money, no purchases, no cash-out.</p>
-          <Link href="/how-to-play" className="text-neon-cyan underline underline-offset-4 hover:text-starlight">
-            How to play
-          </Link>
           <div className="flex flex-wrap justify-center gap-3">
             <CrtToggle />
             <SoundToggle />

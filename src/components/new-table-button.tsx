@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { GAMES, type GameKey } from "@/lib/games/catalog";
+import { GAMES, guidePath, type GameKey } from "@/lib/games/catalog";
 
 /** "New blackjack table" (or a shorter label), in the game's own color. */
 export function NewTableButton({ game, label }: { game: GameKey; label?: string }) {
@@ -14,7 +14,7 @@ export function NewTableButton({ game, label }: { game: GameKey; label?: string 
 /** "How to play" for a game's page, next to its New table button. */
 export function HowToPlayButton({ game }: { game: GameKey }) {
   return (
-    <Link href={`/how-to-play${GAMES[game].path}`} className="pixel-btn bg-space-800 text-starlight">
+    <Link href={guidePath(game)} className="pixel-btn bg-space-800 text-starlight">
       How to play
     </Link>
   );
