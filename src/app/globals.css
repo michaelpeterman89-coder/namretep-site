@@ -139,7 +139,16 @@ input:focus-visible,
   }
 }
 
-/* Galaxies and nebulae (see components/deep-space.tsx), shrunk well below their image size so they read as far away. */
+/* Galaxies and nebulae (see components/deep-space.tsx), as tall as the whole page so they scroll with it. */
+.deep-field {
+  position: absolute;
+  inset: 0;
+  z-index: -10;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Shrunk well below their image size so they read as far away. */
 .deep-object {
   position: absolute;
   width: calc(var(--w) * 0.4px);

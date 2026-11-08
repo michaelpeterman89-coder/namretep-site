@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${pixelFont.variable} ${bodyFont.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col font-sans">
+      <body className="relative flex min-h-full flex-col font-sans">
         <a
           href="#main"
           className="sr-only z-[60] rounded-md bg-neon-cyan px-3 py-2 font-display text-xs text-ink focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
@@ -36,11 +36,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </a>
         <div aria-hidden className="space-bg">
           <div className="nebula" />
-          <DeepSpace />
           <div className="stars stars-far" />
           <div className="stars stars-mid" />
           <div className="stars stars-near" />
         </div>
+        <DeepSpace />
 
         {/* Above the page, so the account menu opens over it. */}
         <header className="relative z-40 mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-2 px-4 py-3 sm:gap-x-8 sm:px-6 sm:py-4">
