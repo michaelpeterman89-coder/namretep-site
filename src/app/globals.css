@@ -147,22 +147,6 @@ input:focus-visible,
   background-size: 100% 100%;
 }
 
-/* They drift much slower than the page scrolls, and stop after 2000px so a long
-   page can't carry them away. Browsers without scroll animations just hold them still. */
-@media (prefers-reduced-motion: no-preference) {
-  .deep-object {
-    animation: deep-drift linear both;
-    animation-timeline: scroll(root);
-    animation-range: 0px 2000px;
-  }
-}
-
-@keyframes deep-drift {
-  to {
-    transform: translateY(calc(var(--drift) * -1px));
-  }
-}
-
 /* ---------- CRT overlay ---------- */
 
 .crt-overlay {
