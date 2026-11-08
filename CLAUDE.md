@@ -9,6 +9,7 @@ Namretep is a home for several projects that share one account. The home page (`
 - `/` is the hub, `/account` is the shared account page (username, avatar, log out), `/admin` is site-wide admin, and login and signup are shared.
 - Each project lives under its own path with its own `layout.tsx` for its menu and notices. Casino pages are all under `/casino` (games, tables, leaderboard, how-to-play, and `/casino/profile` for chips and stats). Old casino addresses redirect there (`next.config.ts`).
 - The site header only has things every project shares (logo, project links, account menu); project-specific things like the chip balance go in the project's own menu, a `ProjectBar` with `ProjectNav` links.
+- `/bugs` is the site-wide public bug tracker. Anyone can read it; players with an account can report and comment (limited to 5 reports and 20 comments an hour); admins can reply, set a status, and delete posts (`src/server/bugs.ts`, statuses in `src/lib/bugs.ts`). Status changes and deletions go in the admin log.
 - Accounts are shared through `profiles`. Casino data (chips, refills, stats) still lives on `profiles` and the casino tables; split it into its own table when a second project needs accounts.
 
 ## Adding a project

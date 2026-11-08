@@ -73,6 +73,9 @@ export function AccountMenu({ username, avatar, isAdmin }: { username: string; a
           <Link href="/account" onClick={() => setOpen(false)} className={`${ITEM} text-starlight`}>
             Account
           </Link>
+          <Link href="/bugs" onClick={() => setOpen(false)} className={`${ITEM} text-starlight`}>
+            Bug reports
+          </Link>
           {isAdmin && (
             <Link href="/admin" onClick={() => setOpen(false)} className={`${ITEM} text-neon-gold`}>
               Admin

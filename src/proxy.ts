@@ -6,6 +6,7 @@ import { getSupabaseEnv } from "@/lib/supabase/env";
 const SIGNED_IN_ONLY = [
   "/account",
   "/admin",
+  "/bugs/new",
   "/casino/profile",
   "/casino/blackjack",
   "/casino/poker",

@@ -26,4 +26,12 @@ describe("describeAdminAction", () => {
       "closed the Texas Hold'em table “High rollers”",
     );
   });
+
+  it("describes bug report changes", () => {
+    expect(describeAdminAction(line("bug_status", { report: 7, from: "new", to: "in_progress" }))).toBe(
+      "marked bug #7 as In progress",
+    );
+    expect(describeAdminAction(line("delete_bug_report", { report: 7, title: "Spam" }))).toBe("deleted bug #7 “Spam”");
+    expect(describeAdminAction(line("delete_bug_comment", { report: 7 }))).toBe("deleted a comment on bug #7");
+  });
 });

@@ -5,6 +5,7 @@ const LINKS = [
   { href: "/admin/players", label: "Players" },
   { href: "/admin/tables", label: "Tables" },
   { href: "/admin/log", label: "Admin log" },
+  { href: "/bugs?status=new", label: "New bugs" },
 ] as const;
 
 export function AdminNav() {

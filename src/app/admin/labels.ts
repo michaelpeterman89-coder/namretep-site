@@ -1,3 +1,4 @@
+import { bugStatus } from "@/lib/bugs";
 import { formatChips } from "@/lib/chips";
 import { gameName } from "@/lib/games/catalog";
 import type { AdminLogLine } from "@/server/admin";
@@ -45,6 +46,12 @@ export function describeAdminAction(line: AdminLogLine): string {
       })${line.targetId ? "" : " for players given chips"}`;
     case "close_table":
       return `closed the ${gameName(String(d.game))} table “${String(d.name)}”`;
+    case "bug_status":
+      return `marked bug #${String(d.report)} as ${bugStatus(String(d.to)).label}`;
+    case "delete_bug_report":
+      return `deleted bug #${String(d.report)} “${String(d.title)}”`;
+    case "delete_bug_comment":
+      return `deleted a comment on bug #${String(d.report)}`;
     default:
       return line.action;
   }

@@ -9,6 +9,7 @@ type NavLink = { href: string; label: string; exact?: boolean };
  * A project's menu links, for inside a ProjectBar. On phones several links drop
  * to their own row of evenly sized buttons (`columns` sets the grid, as literal
  * classes so Tailwind sees them); a single link just sits beside the name.
+ * Reads the page address, so it must render inside a <Suspense> boundary.
  */
 export function ProjectNav({ label, links, columns }: { label: string; links: readonly NavLink[]; columns: string }) {
   const pathname = usePathname();
