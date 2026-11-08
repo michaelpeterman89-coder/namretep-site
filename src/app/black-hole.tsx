@@ -52,6 +52,9 @@ export function BlackHole() {
   useEffect(() => {
     const el = canvas.current!;
     const ctx = el.getContext("2d")!;
+    // Next.js keeps a page you've left in the DOM, just hidden, so this is set
+    // while the hole is running rather than whenever its canvas exists.
+    document.documentElement.classList.add("black-hole-page");
     const still = window.matchMedia("(prefers-reduced-motion: reduce)");
     let width = 0;
     let height = 0;
@@ -358,6 +361,7 @@ export function BlackHole() {
     window.addEventListener("scroll", redraw, { passive: true });
     still.addEventListener("change", start);
     return () => {
+      document.documentElement.classList.remove("black-hole-page");
       cancelAnimationFrame(frame);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", redraw);
