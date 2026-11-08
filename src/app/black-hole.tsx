@@ -6,14 +6,44 @@ import { useEffect, useRef } from "react";
 // inverse-square gravity, so nearby stars speed up and far ones barely move.
 // Light bends around the hole too (gravitational lensing): each star is drawn
 // where it would appear, pushed out toward the glowing ring, with a faint
-// second image on the far side once it gets close.
+// second image on the far side once it gets close. Every so often it fires a
+// pair of jets along its spin axis, straight up and down from the flat disk.
 
 /** How strongly the hole pulls, for a hole with a 40px shadow (px³/s²). */
 const PULL = 9000;
 const STAR_COLORS = ["#ffffff", "#ffffff", "#ece8ff", "#bdf7ff", "#ffd6ec", "#ffcf3e"];
 
+/** Seconds from page load to the first jets, picked at random in this range. */
+const JET_FIRST = [6, 10];
+/** Seconds from the end of one burst to the next, picked at random in this range. */
+const JET_GAP = [20, 35];
+/** How long one burst lasts, seconds. */
+const JET_LIFE = 7;
+/** How far the jets reach from the centre, in shadow radii. */
+const JET_LENGTH = 7;
+/** How bright the jets get, 0 to 1. */
+const JET_BRIGHTNESS = 0.7;
+/** Bright knots per jet. */
+const JET_KNOTS = 5;
+
 type Star = { x: number; y: number; vx: number; vy: number; size: number; color: string; age: number };
 type Speck = { angle: number; radius: number; speed: number; light: number };
+type Knot = { delay: number; speed: number; drift: number; size: number; light: number };
+type Jets = { age: number; up: Knot[]; down: Knot[] };
+
+function between([min, max]: number[]) {
+  return min + Math.random() * (max - min);
+}
+
+function newKnots(): Knot[] {
+  return Array.from({ length: JET_KNOTS }, () => ({
+    delay: Math.random() * (JET_LIFE * 0.5),
+    speed: between([0.18, 0.28]),
+    drift: between([-0.06, 0.06]),
+    size: between([0.035, 0.07]),
+    light: between([0.6, 1]),
+  }));
+}
 
 export function BlackHole() {
   const spot = useRef<HTMLDivElement>(null);
@@ -35,6 +65,8 @@ export function BlackHole() {
     }));
     // Inner disk matter orbits faster (Kepler: speed ∝ r^-1.5).
     for (const s of specks) s.speed = 0.9 * s.radius ** -1.5;
+    let jets: Jets | null = null;
+    let jetWait = between(JET_FIRST);
 
     /** Where the hole's centre is on screen, and the area stars live in, relative to it. */
     function hole() {
@@ -101,6 +133,16 @@ export function BlackHole() {
         if (r < shadow * 0.9) stars[i] = newStar((f ??= field()), true);
       }
       for (const k of specks) k.angle += k.speed * dt;
+      if (jets) {
+        jets.age += dt;
+        if (jets.age >= JET_LIFE) {
+          jets = null;
+          jetWait = between(JET_GAP);
+        }
+      } else {
+        jetWait -= dt;
+        if (jetWait <= 0) jets = { age: 0, up: newKnots(), down: newKnots() };
+      }
     }
 
     function drawStars(cx: number, cy: number) {
@@ -142,6 +184,70 @@ export function BlackHole() {
         }
       }
       ctx.globalAlpha = 1;
+    }
+
+    /** One tapered stream, up (dir -1) or down (dir 1), wider as it gets further from the hole. */
+    function drawStream(cx: number, cy: number, dir: number, reach: number, base: number, tip: number) {
+      ctx.beginPath();
+      ctx.moveTo(cx - base, cy);
+      ctx.lineTo(cx - tip, cy + dir * reach);
+      ctx.lineTo(cx + tip, cy + dir * reach);
+      ctx.lineTo(cx + base, cy);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawJet(cx: number, cy: number, dir: number, knots: Knot[], age: number, bright: number) {
+      const length = shadow * JET_LENGTH;
+      // Shoots out fast then eases off, and fades out once it's reached its full length.
+      const grown = Math.min(1, age / 3);
+      const shot = 1 - (1 - grown) ** 2;
+      const reach = length * shot;
+      const fade = Math.min(1, age / 1.2, (JET_LIFE - age) / 2.5) * bright;
+      if (reach <= 0 || fade <= 0) return;
+
+      const glow = ctx.createLinearGradient(0, cy, 0, cy + dir * reach);
+      glow.addColorStop(0, "rgb(140 190 255 / 0.5)");
+      glow.addColorStop(0.5, "rgb(110 165 255 / 0.2)");
+      glow.addColorStop(1, "rgb(100 150 255 / 0)");
+      ctx.globalAlpha = fade;
+      ctx.fillStyle = glow;
+      drawStream(cx, cy, dir, reach, shadow * 0.09, shadow * 0.2);
+
+      const core = ctx.createLinearGradient(0, cy, 0, cy + dir * reach);
+      core.addColorStop(0, "rgb(240 248 255 / 1)");
+      core.addColorStop(0.45, "rgb(190 222 255 / 0.55)");
+      core.addColorStop(1, "rgb(160 205 255 / 0)");
+      ctx.fillStyle = core;
+      drawStream(cx, cy, dir, reach, Math.max(0.6, shadow * 0.025), Math.max(0.8, shadow * 0.04));
+
+      // Knots: brighter clumps travelling out along the stream, dimming as they go.
+      for (const k of knots) {
+        const at = 0.12 + k.speed * (age - k.delay);
+        if (age < k.delay || at > shot) continue;
+        const x = cx + k.drift * shadow * at;
+        const y = cy + dir * length * at;
+        const size = Math.max(1, k.size * shadow);
+        ctx.globalAlpha = fade * k.light * (1 - at) * 0.3;
+        ctx.fillStyle = "#a8ccff";
+        ctx.beginPath();
+        ctx.arc(x, y, size * 2.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = fade * k.light * (1 - at);
+        ctx.fillStyle = "#f4f9ff";
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawJets(cx: number, cy: number) {
+      const length = shadow * JET_LENGTH;
+      if (!jets || cy < -length || cy > height + length) return;
+      // We look slightly down on the disk, so the upper jet leans toward us and looks brighter.
+      drawJet(cx, cy, -1, jets.up, jets.age, JET_BRIGHTNESS);
+      drawJet(cx, cy, 1, jets.down, jets.age, JET_BRIGHTNESS * 0.75);
     }
 
     /** The disk seen nearly edge-on: half of it ("back" or "front") as a band of glowing matter. */
@@ -217,6 +323,7 @@ export function BlackHole() {
       ctx.clearRect(0, 0, width, height);
       const { cx, cy } = hole();
       drawStars(cx, cy);
+      drawJets(cx, cy);
       drawHole(cx, cy);
     }
 
@@ -234,6 +341,7 @@ export function BlackHole() {
     function start() {
       cancelAnimationFrame(frame);
       if (still.matches) {
+        jets = null;
         draw();
       } else {
         last = performance.now();
