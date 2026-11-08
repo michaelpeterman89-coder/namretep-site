@@ -1,6 +1,7 @@
-// The backdrop's far-away objects: still, faint, and behind everything, so they
-// cost nothing to run and nothing (like the home page's black hole) affects them.
-// The images come from scripts/generate-deep-space.mjs. Bigger screens get more.
+// The backdrop's far-away objects: tiny, faint, still, and behind the stars, so
+// you only notice them if you look. They cost nothing to run, and nothing (like
+// the home page's black hole) affects them. The images come from
+// scripts/generate-deep-space.mjs. Bigger screens get a few more.
 
 type DeepObject = {
   name: string;
@@ -13,16 +14,12 @@ type DeepObject = {
 };
 
 const OBJECTS: DeepObject[] = [
-  { name: "andromeda", w: 260, h: 130, opacity: 0.7, show: "block", at: { right: "1%", top: "16%" } },
-  { name: "orion", w: 180, h: 180, opacity: 0.5, show: "block", at: { left: "-2%", top: "60%" } },
-  { name: "cliffs", w: 280, h: 130, opacity: 0.6, show: "block", at: { right: "-1%", bottom: "-1%" } },
-  { name: "whirlpool", w: 150, h: 130, opacity: 0.7, show: "hidden md:block", at: { left: "1%", top: "16%" } },
-  { name: "ring", w: 90, h: 90, opacity: 0.6, show: "hidden md:block", at: { right: "4%", top: "66%" } },
-  { name: "cluster", w: 120, h: 120, opacity: 0.65, show: "hidden md:block", at: { left: "4%", top: "40%" } },
-  { name: "jet", w: 210, h: 120, opacity: 0.65, show: "hidden min-[1600px]:block", at: { right: "1%", top: "41%" } },
-  { name: "crab", w: 130, h: 115, opacity: 0.5, show: "hidden min-[1600px]:block", at: { left: "21%", top: "10%" } },
-  { name: "horsehead", w: 190, h: 160, opacity: 0.45, show: "hidden min-[1600px]:block", at: { right: "26%", bottom: "2%" } },
-  { name: "pillars", w: 160, h: 200, opacity: 0.5, show: "hidden min-[1600px]:block", at: { left: "24%", bottom: "-2%" } },
+  { name: "andromeda", w: 260, h: 130, opacity: 0.35, show: "block", at: { right: "7%", top: "19%" } },
+  { name: "orion", w: 180, h: 180, opacity: 0.3, show: "block", at: { left: "3%", top: "68%" } },
+  { name: "whirlpool", w: 150, h: 130, opacity: 0.35, show: "hidden md:block", at: { left: "9%", top: "14%" } },
+  { name: "ring", w: 90, h: 90, opacity: 0.3, show: "hidden md:block", at: { right: "13%", top: "74%" } },
+  { name: "cluster", w: 120, h: 120, opacity: 0.35, show: "hidden min-[1600px]:block", at: { left: "14%", top: "43%" } },
+  { name: "jet", w: 210, h: 120, opacity: 0.35, show: "hidden min-[1600px]:block", at: { right: "4%", top: "50%" } },
 ];
 
 export function DeepSpace() {
