@@ -31,12 +31,32 @@ Live site: www.namretep.com (Vercel, domain from GoDaddy). Repo: GitHub, deploys
 
 Secrets live in `.env.local` (never committed) and in Vercel Environment Variables. Keep `.env.example` up to date with variable names only.
 
+## Commands
+
+- `npm run dev` / `npm run build` / `npm run lint` / `npm test` (Vitest, `src/**/*.test.ts`)
+- Apply migrations to the live database: `npx supabase db push --linked` (needs the owner's OK), then `npm run db:types`.
+- After adding or moving routes, run `npx next typegen` so `PageProps`/`LayoutProps` types catch up.
+- Run Vitest from `E:\namretep-site` (uppercase drive). From a lowercase `e:` path it finds "no tests" and still passes (`passWithNoTests`), so check the test count.
+
+## Code layout
+
+- `src/lib/games/<game>/`: pure engines plus tests. `src/server/<game>.ts`: database-backed game logic (deal, act, settle, timeouts), called from `src/app/casino/<game>/actions.ts` server actions and the `src/app/api/<game>/[tableId]` refresh routes (blackjack uses `api/tables`).
+- `src/lib/supabase/`: `server.ts` (the player's session, RLS applies), `admin.ts` (secret key, bypasses RLS, server-only: check the player and their permissions first), `client.ts` (browser).
+- Live tables: clients subscribe to Realtime `UPDATE`s on their `game_tables` row, then refetch state from the API route (with a 10s fallback poll). Any change players should see must bump that row.
+- Hidden cards live in server-only tables with no client grants (`blackjack_round_secrets`, `poker_hand_secrets`, `baccarat_shoes`). The public state only ever holds dealt or revealed cards.
+- Every chip change goes through `chip_ledger`, with a `reason`. Stats go in `player_game_stats`.
+
+## Next.js 16 gotchas (see AGENTS.md)
+
+- `cacheComponents` is on: anything that reads cookies (e.g. `getCurrentPlayer()`) must render inside `<Suspense>`, or the build fails.
+- Middleware is `src/proxy.ts`. Redirects in `next.config.ts` run before it.
+
 ---
 
 ## Deployment
 
 - Vercel deploys production from `main`: **every push to `main` goes live at www.namretep.com.** Only push to `main` when the change is ready for players, after build, lint, and tests pass, and ask the owner first.
-- `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are set in Vercel for all environments. Any new env var must be added in Vercel too (and to `.env.example`), or the deploy will break.
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and the server-only `SUPABASE_SECRET_KEY` are set in Vercel. Any new env var must be added in Vercel too (and to `.env.example`), or the deploy will break.
 - After a deploy, check www.namretep.com/api/health to confirm Supabase is connected.
 
 ---
@@ -71,7 +91,7 @@ Secrets live in `.env.local` (never committed) and in Vercel Environment Variabl
 - Any logged-in player can **create a table** for a game and set its rules (see game settings below).
 - Table options: name, **public** (listed in the lobby) or **private** (join by invite code/link), number of seats, min/max bet.
 - **Solo play** = a private table with one seat. Same engine, same stats.
-- **Lobby** page lists open public tables with their game, key rules, and open seats.
+- **Tables** page (`/casino/tables`, formerly the lobby) lists open public tables with their game, key rules, and open seats.
 - Players can **join** an open seat, **leave**, and optionally **spectate**.
 - Turn timer for multiplayer tables (auto-stand / sit-out if a player times out).
 - The table creator can close the table. Empty tables close automatically after a while.
@@ -119,13 +139,11 @@ Each table shows a short **rules summary** (e.g. "6D · S17 · 3:2 · DAS · LS"
 
 Every game is listed once in `src/lib/games/catalog.ts` (name, page path under `/casino`, and its color for buttons and labels). A new game also needs a How to Play guide in `src/app/casino/how-to-play/guides/` registered in `guides/index.ts` — the build fails without one, and the guide page, overview card, and links then appear automatically. Remove the game from `PLANNED_GAMES` when it launches.
 
-## Future games (build after Blackjack is solid)
-Design the table/config/stats system so new games plug in without rewrites. Planned:
+## More games
+Live: Blackjack, Texas Hold'em (with bots), Craps, Baccarat. Still planned:
 - Roulette (American / European / French, la partage)
-- Craps (odds multiples, field payouts)
-- Baccarat (commission vs no-commission)
-- Texas Hold'em (player vs player; blinds, buy-in)
 - Video Poker (pay tables, e.g. 9/6 Jacks or Better)
+- More poker (Omaha, Seven-Card Stud as poker table options)
 
 ---
 
@@ -147,7 +165,7 @@ The look is **inspired by** chunky pixel-art roguelike card games (Balatro-style
 
 ## Build order
 
-Work in phases. Finish and test each one before starting the next.
+Phases 1–6 are done, and phase 7 is under way (Hold'em, Craps, and Baccarat are live). Work in phases. Finish and test each one before starting the next.
 
 1. **Setup** — Next.js + TypeScript + Tailwind, Supabase client, basic space-themed layout, deploys on Vercel.
 2. **Accounts** — sign up / log in / profile, chip balance, daily refill.
