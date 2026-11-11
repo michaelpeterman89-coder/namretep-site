@@ -318,6 +318,86 @@ export type Database = {
           },
         ]
       }
+      bug_comments: {
+        Row: {
+          author_id: string | null
+          body: string | null
+          created_at: string
+          id: number
+          report_id: number
+          status: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: never
+          report_id: number
+          status?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: never
+          report_id?: number
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bug_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bug_comments_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "bug_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bug_reports: {
+        Row: {
+          author_id: string | null
+          body: string
+          created_at: string
+          id: number
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          body: string
+          created_at?: string
+          id?: never
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          body?: string
+          created_at?: string
+          id?: never
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bug_reports_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chip_ledger: {
         Row: {
           amount: number
@@ -869,6 +949,42 @@ export type Database = {
           round_id: string
           round_number: number
         }[]
+      }
+      bug_check_poster: {
+        Args: { p_limit: number; p_player: string; p_table: string }
+        Returns: undefined
+      }
+      bug_comment_add: {
+        Args: { p_body: string; p_player: string; p_report: number }
+        Returns: undefined
+      }
+      bug_comment_delete: {
+        Args: { p_admin: string; p_comment: number }
+        Returns: undefined
+      }
+      bug_report_counts: {
+        Args: never
+        Returns: {
+          reports: number
+          status: string
+        }[]
+      }
+      bug_report_create: {
+        Args: { p_body: string; p_player: string; p_title: string }
+        Returns: number
+      }
+      bug_report_delete: {
+        Args: { p_admin: string; p_report: number }
+        Returns: undefined
+      }
+      bug_report_respond: {
+        Args: {
+          p_admin: string
+          p_body: string
+          p_report: number
+          p_status: string
+        }
+        Returns: undefined
       }
       can_view_table: { Args: { p_table_id: string }; Returns: boolean }
       claim_daily_refill: { Args: never; Returns: number }
