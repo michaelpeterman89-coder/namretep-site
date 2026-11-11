@@ -1,4 +1,5 @@
 import type { StaticImageData } from "next/image";
+import gravityGardenThumb from "./gravity-garden/thumbnail.png";
 import reactionDiffusionThumb from "./reaction-diffusion/thumbnail.png";
 
 // Every Star Studio experiment, listed once. The gallery shows them in this
@@ -20,6 +21,14 @@ export type Experiment = {
 };
 
 export const EXPERIMENTS: Experiment[] = [
+  {
+    slug: "gravity-garden",
+    title: "Gravity Garden",
+    description:
+      "A 3D solar system with real gravity. Fling planets around the sun, watch them settle into orbits, crash, or get swallowed, at up to 1000× speed.",
+    thumbnail: gravityGardenThumb,
+    added: "2026-11-10",
+  },
   {
     slug: "reaction-diffusion",
     title: "Reaction Diffusion",
