@@ -33,7 +33,7 @@ export const PROJECTS: Project[] = [
     key: "fantasy",
     name: "Fantasy",
     path: "/fantasy",
-    tagline: "Fantasy sports league standings, matchups, rosters, and more, using Yahoo Fantasy data.",
+    tagline: "Fantasy sports league standings, matchups, rosters, and more.",
     status: "live",
     text: "text-neon-lime",
     border: "border-neon-lime hover:bg-neon-lime/10",

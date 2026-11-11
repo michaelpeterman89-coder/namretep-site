@@ -774,50 +774,6 @@ export type Database = {
           },
         ]
       }
-      yahoo_connections: {
-        Row: {
-          access_level: string
-          access_token_encrypted: string
-          access_token_expires_at: string
-          created_at: string
-          needs_reconnect: boolean
-          refresh_locked_until: string | null
-          refresh_token_encrypted: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          access_level?: string
-          access_token_encrypted: string
-          access_token_expires_at: string
-          created_at?: string
-          needs_reconnect?: boolean
-          refresh_locked_until?: string | null
-          refresh_token_encrypted: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          access_level?: string
-          access_token_encrypted?: string
-          access_token_expires_at?: string
-          created_at?: string
-          needs_reconnect?: boolean
-          refresh_locked_until?: string | null
-          refresh_token_encrypted?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "yahoo_connections_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       [_ in never]: never
